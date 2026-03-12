@@ -1,0 +1,85 @@
+/* Welcome page: sidebar, recent vaults, open/create actions. */
+
+#welcomePage {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+}
+
+#welcomeSidebar {
+    background-color: #252526;
+    border-right: 1px solid #3c3c3c;
+    border-radius: 0 8px 8px 0;
+}
+
+#welcomeSidebarTitle {
+    background-color: transparent;
+    color: #cccccc;
+    font-size: 14px;
+}
+
+#welcomeRecentList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: #cccccc;
+    font-size: 13px;
+    padding: 2px 0;
+}
+
+#welcomeRecentList::item {
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+#welcomeRecentList::item:hover {
+    background-color: #2a2d2e;
+}
+
+#welcomeRecentList::item:selected {
+    background-color: #166b2a;
+}
+
+#welcomeTitle {
+    color: #ffffff;
+}
+
+#welcomeSubtitle {
+    color: #9d9d9d;
+    font-size: 15px;
+}
+
+#welcomeVersion {
+    color: #6d6d6d;
+    font-size: 12px;
+}
+
+#welcomePrimaryButton {
+    background-color: #1e8c34;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    min-width: 220px;
+}
+
+#welcomePrimaryButton:hover {
+    background-color: #22a03d;
+}
+
+#welcomePrimaryButton:pressed {
+    background-color: #166b2a;
+}
+
+#welcomeSecondaryButton {
+    background-color: transparent;
+    color: #cccccc;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    font-size: 14px;
+    min-width: 220px;
+}
+
+#welcomeSecondaryButton:hover {
+    background-color: #2a2d2e;
+    border-color: #505050;
+}

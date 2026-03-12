@@ -1,0 +1,11 @@
+/* App-wide base theme. */
+
+QWidget {
+    background-color: #1e1e1e;
+    color: #cccccc;
+}
+
+QMainWindow {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+}

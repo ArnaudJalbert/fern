@@ -1,0 +1,27 @@
+/* Generic card component — reusable across the app. */
+
+#fernCard {
+    background-color: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    min-width: 180px;
+    min-height: 80px;
+}
+
+#fernCard:hover {
+    background-color: #2a2d2e;
+    border-color: #505050;
+}
+
+#fernCardIcon {
+    background-color: transparent;
+}
+
+#fernCardTitle {
+    color: #ffffff;
+}
+
+#fernCardSubtitle {
+    color: #6d6d6d;
+    font-size: 12px;
+}

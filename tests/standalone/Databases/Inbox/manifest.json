@@ -1,0 +1,14 @@
+{
+  "properties": [
+    {
+      "id": "archive",
+      "name": "Archive",
+      "type": "boolean"
+    },
+    {
+      "id": "note",
+      "name": "Note",
+      "type": "string"
+    }
+  ]
+}

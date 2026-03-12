@@ -1,0 +1,147 @@
+/* Vault view: sidebar and content. */
+
+#vaultView {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+}
+
+#vaultSidebar {
+    background-color: #252526;
+    border-right: 1px solid #3c3c3c;
+    border-radius: 0 8px 8px 0;
+}
+
+#vaultSidebarNav {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: #cccccc;
+    font-size: 13px;
+    padding: 2px 0;
+}
+
+#vaultSidebarNav::item {
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+#vaultSidebarNav::item:hover {
+    background-color: #2a2d2e;
+}
+
+#vaultSidebarNav::item:selected {
+    background-color: #166b2a;
+}
+
+#vaultContent {
+    background-color: #1e1e1e;
+    border-radius: 8px 0 0 8px;
+}
+
+#vaultContentToolbar {
+    background-color: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    border-radius: 8px 0 0 0;
+    min-height: 44px;
+    max-height: 44px;
+}
+
+/* currentView is "databases" or "pages" so styles can target the active context */
+#vaultContentStack[currentView="pages"] {
+    background-color: transparent;
+}
+
+#vaultContentOptionsButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #9d9d9d;
+    font-size: 18px;
+    padding: 0;
+}
+
+#vaultContentOptionsButton:hover {
+    background-color: #2a2d2e;
+    color: #cccccc;
+}
+
+#vaultContentBackButton {
+    background-color: transparent;
+    border: none;
+    color: #9d9d9d;
+    font-size: 13px;
+    padding: 2px 0;
+}
+
+#vaultContentBackButton:hover {
+    color: #cccccc;
+}
+
+#pagesNewPageButton {
+    background-color: #166b2a;
+    border: none;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 13px;
+    min-width: 96px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    padding: 0 16px;
+}
+
+#pagesNewPageButton:hover {
+    background-color: #1e8c34;
+}
+
+#pagesNewPageButton:pressed {
+    background-color: #22a03d;
+}
+
+#vaultContentStack {
+    background-color: transparent;
+}
+
+#vaultContentScroll {
+    background-color: transparent;
+}
+
+#vaultContentCards {
+    background-color: transparent;
+    padding: 32px;
+}
+
+/* Options menu and View submenu: hover and current (checked) highlight */
+QMenu {
+    background-color: #252526;
+    color: #cccccc;
+    border-radius: 8px;
+}
+
+QMenu::item {
+    padding: 6px 24px;
+    border-radius: 4px;
+}
+
+QMenu::indicator {
+    width: 0;
+    height: 0;
+    max-width: 0;
+    max-height: 0;
+    border: none;
+    background: none;
+}
+
+QMenu::item:selected {
+    background-color: #2a2d2e;
+}
+
+QMenu::item:checked {
+    background-color: #166b2a;
+    color: #ffffff;
+}
+
+QMenu::item:checked:selected {
+    background-color: #1e8c34;
+    color: #ffffff;
+}
