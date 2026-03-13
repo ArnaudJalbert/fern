@@ -80,7 +80,10 @@ class Table(QFrame):
         header = self._view.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         header.setStretchLastSection(True)
-        self._view.verticalHeader().setVisible(False)
+        v_header = self._view.verticalHeader()
+        v_header.setVisible(False)
+        v_header.setDefaultSectionSize(40)
+        v_header.setMinimumSectionSize(40)
         self._stack.addWidget(self._view)
 
         loading = QFrame()

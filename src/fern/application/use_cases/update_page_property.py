@@ -44,8 +44,6 @@ class UpdatePagePropertyUseCase:
             else p
             for p in page.properties
         ]
-        if not any(p.id == input_data.property_id for p in page.properties):
-            return self.Output(success=False)
         self._page_repository.update(
             page.id,
             page.title,

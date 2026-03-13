@@ -1,87 +1,102 @@
-/* Page editor view */
+/* Page editor — inputs and property cards */
 
-/* Properties: container has border, cards inside have none */
 #editorPropertiesContainer {
     background-color: transparent;
-    border: 1px solid #3c3c3c;
-    border-radius: 4px;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    padding: 2px;
 }
 
-#propertyCardsWidget {
-    background-color: transparent;
-}
-
+#propertyCardsWidget,
 #propertyCard {
     background-color: transparent;
     border: none;
 }
 
 #propertyField {
-    min-height: 28px;
+    min-height: 32px;
 }
 
 #propertyFieldLabel {
-    color: #9d9d9d;
+    color: #a1a1aa;
     font-size: 13px;
 }
 
 #propertyFieldCheckbox {
-    color: #cccccc;
+    color: #fafafa;
 }
 
 #propertyFieldLineEdit {
-    background-color: #1e1e1e;
-    border: 1px solid #3c3c3c;
-    border-radius: 4px;
-    color: #cccccc;
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    color: #fafafa;
     font-size: 13px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     min-width: 200px;
 }
 
 #propertyFieldLineEdit:focus {
-    border-color: #166b2a;
+    border-color: #4ade80;
+}
+
+#propertySettingsWidget QLineEdit,
+#propertySettingsName {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    color: #fafafa;
+    padding: 8px 12px;
+}
+
+#propertySettingsWidget QComboBox,
+#propertySettingsType {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    color: #fafafa;
+    padding: 8px 12px;
+    min-height: 20px;
 }
 
 #editorTitleEdit {
-    background-color: #252526;
-    border: 1px solid #3c3c3c;
-    border-radius: 6px;
-    color: #cccccc;
-    font-size: 16px;
-    padding: 10px 14px;
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    color: #fafafa;
+    font-size: 18px;
+    font-weight: 500;
+    padding: 12px 16px;
 }
 
 #editorTitleEdit:focus {
-    border-color: #166b2a;
+    border-color: #4ade80;
 }
 
 #editorContentEdit {
-    background-color: #1e1e1e;
-    border: 1px solid #3c3c3c;
-    border-radius: 6px;
-    color: #cccccc;
-    font-size: 13px;
-    padding: 14px;
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    color: #fafafa;
+    font-size: 14px;
+    padding: 16px;
 }
 
 #editorContentEdit:focus {
-    border-color: #166b2a;
+    border-color: #4ade80;
 }
 
 #editorDeleteButton {
     background-color: transparent;
-    border: 1px solid #5c2a2a;
-    border-radius: 6px;
-    color: #c55454;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    color: #f87171;
     font-size: 13px;
-    height: 32px;
-    min-height: 32px;
-    max-height: 32px;
-    padding: 0 12px;
+    height: 36px;
+    padding: 0 14px;
 }
 
 #editorDeleteButton:hover {
-    background-color: #5c2a2a;
-    color: #e07070;
+    background-color: #7f1d1d;
+    color: #fecaca;
 }

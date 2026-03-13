@@ -79,9 +79,13 @@ class EditorView(FernView):
         self._content_edit.setFont(font)
         MarkdownHighlighter(self._content_edit.document())
         self._content_edit.textChanged.connect(self._on_text_changed)
-        self._content_edit.setMinimumHeight(100)
+        self._content_edit.setMinimumHeight(80)
+        self._content_edit.setMinimumWidth(0)
         set_expanding(self._content_edit, horizontal=True, vertical=True)
         self.content_layout().addWidget(self._content_edit, 1)
+        self.content_layout().setStretchFactor(self._content_edit, 1)
+        self.content_layout().setStretchFactor(self._title_edit, 0)
+        self.content_layout().setStretchFactor(self._property_cards_widget, 0)
 
     def _on_text_changed(self) -> None:
         if self._page is not None:
@@ -101,11 +105,21 @@ class EditorView(FernView):
                 self._page, card.get_property_id(), card.get_value()
             )
 
-    def _rebuild_properties(self, page) -> None:
+    def _rebuild_properties(self, page, property_order=None) -> None:
         self._clear_properties()
         if self._property_cards_widget is None:
             return
-        for prop in getattr(page, "properties", []):
+        props = [
+            p for p in getattr(page, "properties", [])
+            if getattr(p, "type", "") not in ("id", "title")
+        ]
+        if property_order:
+            order_ids = [i for i in property_order if i not in ("id", "title")]
+            by_id = {getattr(p, "id", ""): p for p in props}
+            ordered = [by_id[i] for i in order_ids if i in by_id]
+            rest = [p for p in props if getattr(p, "id", "") not in order_ids]
+            props = ordered + rest
+        for prop in props:
             pid = getattr(prop, "id", "")
             name = getattr(prop, "name", pid)
             ptype = getattr(prop, "type", "boolean")
@@ -121,7 +135,7 @@ class EditorView(FernView):
             card.value_changed.connect(lambda _val, c=card: self._on_property_value_changed(c))
             self._property_cards_widget.add_card(card)
 
-    def set_page(self, page) -> None:
+    def set_page(self, page, property_order=None) -> None:
         self._save_timer.stop()
         self._page = page
         if page is None:
@@ -137,7 +151,7 @@ class EditorView(FernView):
         self._content_edit.setPlainText(content)
         self._title_edit.blockSignals(False)
         self._content_edit.blockSignals(False)
-        self._rebuild_properties(page)
+        self._rebuild_properties(page, property_order=property_order)
 
     def get_edited_page_data(self) -> tuple[int, str, str] | None:
         if self._page is None:

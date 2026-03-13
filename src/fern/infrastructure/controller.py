@@ -10,6 +10,7 @@ from fern.application.use_cases.open_vault import OpenVaultUseCase
 from fern.application.use_cases.remove_property import RemovePropertyUseCase
 from fern.application.use_cases.update_page_property import UpdatePagePropertyUseCase
 from fern.application.use_cases.update_property import UpdatePropertyUseCase
+from fern.application.use_cases.update_property_order import UpdatePropertyOrderUseCase
 
 
 class RecentVaultsPort(Protocol):
@@ -37,6 +38,9 @@ class AppController:
         update_property: Callable[
             [Path, str, str, str | None, str | None], UpdatePropertyUseCase.Output
         ],
+        update_property_order: Callable[
+            [Path, str, tuple[str, ...]], UpdatePropertyOrderUseCase.Output
+        ],
         update_page_property: Callable[
             [Path, str, int, str, bool | str], UpdatePagePropertyUseCase.Output
         ],
@@ -50,6 +54,7 @@ class AppController:
         self._add_property = add_property
         self._remove_property = remove_property
         self._update_property = update_property
+        self._update_property_order = update_property_order
         self._update_page_property = update_page_property
 
     def get_recent_vaults(self) -> list[Path]:
@@ -140,6 +145,17 @@ class AppController:
     def open_vault_refresh(self, vault_path: Path) -> OpenVaultUseCase.Output:
         """Re-open the vault and return fresh output (e.g. after schema change)."""
         return self._open_vault(vault_path)
+
+    def update_property_order(
+        self,
+        vault_path: Path,
+        database_name: str,
+        property_order: tuple[str, ...],
+    ) -> UpdatePropertyOrderUseCase.Output:
+        """Save the display order of properties for the database."""
+        return self._update_property_order(
+            vault_path, database_name, property_order
+        )
 
     def update_page_property(
         self,

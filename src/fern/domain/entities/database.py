@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from fern.domain.entities.manifest import Manifest
 from fern.domain.entities.page import Page
+from fern.domain.entities.properties import Property
 
 
 @dataclass(slots=True, kw_only=True)
 class Database:
-    """A database is a named container of pages and a schema (manifest)."""
+    """A database is a named container of pages and a schema (properties + display order)."""
 
     name: str
     pages: list[Page] = field(default_factory=list)
-    manifest: Manifest = field(default_factory=Manifest)
+    properties: list[Property] = field(default_factory=list)
+    property_order: list[str] = field(default_factory=list)

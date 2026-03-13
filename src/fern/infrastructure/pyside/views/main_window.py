@@ -8,6 +8,7 @@ used vault on startup if available.
 
 from pathlib import Path
 
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QFileDialog,
     QMainWindow,
@@ -96,11 +97,19 @@ class MainWindow(QMainWindow):
         # Replace existing vault view if any (keep only one vault view in the stack)
         current = self._stack.currentWidget()
         if isinstance(current, VaultView):
+            current.save_pending_state()
             self._stack.removeWidget(current)
         self.setWindowTitle(f"Fern — {output.vault_name}")
         vault_view = VaultView(self._controller, vault_path, output)
         self._stack.addWidget(vault_view)
         self._stack.setCurrentWidget(vault_view)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Save any pending state (editor, property order) before closing."""
+        current = self._stack.currentWidget()
+        if isinstance(current, VaultView):
+            current.save_pending_state()
+        event.accept()
 
     def open_vault(self, vault_path: Path) -> None:
         """

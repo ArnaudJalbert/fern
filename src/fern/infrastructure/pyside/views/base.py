@@ -80,6 +80,10 @@ class FernView(QWidget):
 
         self._content = QWidget()
         self._content.setObjectName("vaultContentStack")
+        self._content.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
         self._content_layout = QVBoxLayout(self._content)
         self._content_layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._content, 1)

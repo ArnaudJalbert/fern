@@ -62,6 +62,7 @@ class VaultView(QWidget):
         self._vault_path = vault_path
         self._vault_output = vault_output
         self._current_database_name: str = ""
+        self._current_property_order: tuple = ()
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -71,6 +72,8 @@ class VaultView(QWidget):
         layout.setSpacing(0)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(0)
+        splitter.setObjectName("vaultSplitter")
 
         # Left: sidebar with single "Databases" item
         sidebar = QFrame()
@@ -117,6 +120,9 @@ class VaultView(QWidget):
         self._pages_view.property_remove_requested.connect(
             self._on_property_remove_requested
         )
+        self._pages_view.save_order_requested.connect(
+            self._on_save_order_requested
+        )
         self._view_stack.addWidget(self._pages_view)
         self._editor_view = EditorView()
         self._editor_view.back_requested.connect(self._on_editor_back_requested)
@@ -130,7 +136,7 @@ class VaultView(QWidget):
         content.setObjectName("vaultContent")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.addWidget(self._view_stack)
+        content_layout.addWidget(self._view_stack, 1)
         splitter.addWidget(content)
 
         splitter.setSizes([260, 640])
@@ -143,11 +149,52 @@ class VaultView(QWidget):
         """Called when sidebar selection changes; content is already the databases view."""
         pass
 
+    @staticmethod
+    def _update_mandatory_props(props: list, page_id: int, title: str) -> list:
+        """Update id/title property values in a page's property list."""
+        updated = []
+        has_id = False
+        has_title = False
+        for p in props:
+            pid = getattr(p, "id", "")
+            if pid == "id":
+                updated.append(SimpleNamespace(
+                    id="id", name="ID", type="id", value=page_id, mandatory=True,
+                ))
+                has_id = True
+            elif pid == "title":
+                updated.append(SimpleNamespace(
+                    id="title", name="Title", type="title", value=title, mandatory=True,
+                ))
+                has_title = True
+            else:
+                updated.append(p)
+        if not has_id:
+            updated.insert(0, SimpleNamespace(
+                id="id", name="ID", type="id", value=page_id, mandatory=True,
+            ))
+        if not has_title:
+            updated.insert(1 if has_id else 0, SimpleNamespace(
+                id="title", name="Title", type="title", value=title, mandatory=True,
+            ))
+        return updated
+
     def _on_database_selected(self, database) -> None:
         """Switch to the pages view and show pages for the selected database."""
         name = getattr(database, "name", str(database))
-        raw_pages = getattr(database, "pages", ())
-        schema = getattr(database, "schema", ())
+        # Refresh vault so we get latest data (including saved property order)
+        fresh = self._controller.open_vault_refresh(self._vault_path)
+        self._vault_output = fresh
+        self._database_view.set_databases(fresh.databases)
+        db = None
+        for d in fresh.databases:
+            if getattr(d, "name", "") == name:
+                db = d
+                break
+        if db is None:
+            return
+        raw_pages = getattr(db, "pages", ())
+        schema = getattr(db, "schema", ())
         pages = [
             SimpleNamespace(
                 id=p.id,
@@ -155,7 +202,9 @@ class VaultView(QWidget):
                 content=p.content,
                 properties=[
                     SimpleNamespace(
-                        id=prop.id, name=prop.name, type=prop.type, value=prop.value
+                        id=prop.id, name=prop.name, type=prop.type,
+                        value=prop.value,
+                        mandatory=getattr(prop, "mandatory", False),
                     )
                     for prop in getattr(p, "properties", ())
                 ],
@@ -163,8 +212,17 @@ class VaultView(QWidget):
             for p in raw_pages
         ]
         self._current_database_name = name
-        self._pages_view.set_pages(pages, title=name, schema=schema)
+        self._current_property_order = getattr(db, "property_order", ()) or ()
+        self._pages_view.set_pages(
+            pages, title=name, schema=schema, property_order=self._current_property_order
+        )
         self._view_stack.setCurrentWidget(self._pages_view)
+
+    def save_pending_state(self) -> None:
+        """Persist editor content if the editor is visible (e.g. before closing)."""
+        current = self._view_stack.currentWidget()
+        if current is self._editor_view:
+            self._on_editor_save_requested()
 
     def _on_pages_back_requested(self) -> None:
         """Switch back from pages view to the database list."""
@@ -172,7 +230,7 @@ class VaultView(QWidget):
 
     def _on_page_activated(self, page) -> None:
         """Load the selected page into the editor and switch to the editor view."""
-        self._editor_view.set_page(page)
+        self._editor_view.set_page(page, property_order=self._current_property_order)
         self._view_stack.setCurrentWidget(self._editor_view)
 
     def _on_editor_back_requested(self) -> None:
@@ -197,22 +255,17 @@ class VaultView(QWidget):
         current = self._pages_view.get_pages()
         updated = []
         for p in current:
-            props = getattr(p, "properties", [])
-            if getattr(p, "id", None) == page_id:
-                updated.append(
-                    SimpleNamespace(
-                        id=page_id, title=title, content=content, properties=list(props)
-                    )
-                )
-            else:
-                updated.append(
-                    SimpleNamespace(
-                        id=getattr(p, "id", 0),
-                        title=getattr(p, "title", ""),
-                        content=getattr(p, "content", ""),
-                        properties=list(props),
-                    )
-                )
+            props = list(getattr(p, "properties", []))
+            pid = getattr(p, "id", 0)
+            ptitle = getattr(p, "title", "")
+            pcontent = getattr(p, "content", "")
+            if pid == page_id:
+                ptitle = title
+                pcontent = content
+                props = self._update_mandatory_props(props, page_id, title)
+            updated.append(
+                SimpleNamespace(id=pid, title=ptitle, content=pcontent, properties=props)
+            )
         self._pages_view.set_pages(updated)
 
     def _on_editor_delete_requested(self) -> None:
@@ -302,6 +355,7 @@ class VaultView(QWidget):
                         name=getattr(p, "name", p.id),
                         type=getattr(p, "type", "boolean"),
                         value=value,
+                        mandatory=getattr(p, "mandatory", False),
                     )
                 )
                 found = True
@@ -310,7 +364,8 @@ class VaultView(QWidget):
         if not found:
             new_props.append(
                 SimpleNamespace(
-                    id=property_id, name=property_id, type="boolean", value=value
+                    id=property_id, name=property_id, type="boolean",
+                    value=value, mandatory=False,
                 )
             )
         updated_page = SimpleNamespace(
@@ -341,6 +396,8 @@ class VaultView(QWidget):
             or "prop"
         )
         slug = slug.strip("_") or "prop"
+        if slug in ("id", "title"):
+            slug = f"{slug}_prop"
         out = self._controller.add_property(
             self._vault_path,
             self._current_database_name,
@@ -396,13 +453,20 @@ class VaultView(QWidget):
                                 name=prop.name,
                                 type=prop.type,
                                 value=prop.value,
+                                mandatory=getattr(prop, "mandatory", False),
                             )
                             for prop in getattr(p, "properties", ())
                         ],
                     )
                     for p in raw_pages
                 ]
-                self._pages_view.set_pages(pages, title=db.name, schema=schema)
+                self._current_property_order = getattr(db, "property_order", ()) or ()
+                self._pages_view.set_pages(
+                    pages,
+                    title=db.name,
+                    schema=schema,
+                    property_order=self._current_property_order,
+                )
                 break
 
     def _on_property_edit_requested(self, prop) -> None:
@@ -433,6 +497,52 @@ class VaultView(QWidget):
             )
             return
         self._refresh_current_pages_and_schema()
+
+    def _on_save_order_requested(self) -> None:
+        """Save the current column order to the database (user clicked Save column order)."""
+        if not self._current_database_name:
+            QMessageBox.warning(
+                self,
+                "Save column order",
+                "Open a database first.",
+            )
+            return
+        try:
+            order = self._pages_view.get_property_order_for_save()
+        except RuntimeError as e:
+            QMessageBox.warning(
+                self,
+                "Save column order",
+                f"Could not read column order:\n\n{e!s}",
+            )
+            return
+        vault_path = Path(self._vault_path).resolve()
+        try:
+            out = self._controller.update_property_order(
+                vault_path,
+                self._current_database_name,
+                order,
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Save column order",
+                f"Save failed: {e!s}",
+            )
+            return
+        if not out.success:
+            QMessageBox.warning(
+                self,
+                "Save column order",
+                "Save failed (success=False).",
+            )
+            return
+        self._refresh_current_pages_and_schema()
+        QMessageBox.information(
+            self,
+            "Save column order",
+            "Column order saved.",
+        )
 
     def _on_property_remove_requested(self, property_id: str) -> None:
         """Confirm and remove the property, then refresh."""
@@ -471,9 +581,14 @@ class VaultView(QWidget):
             id=out.page_id,
             title=out.title,
             content=out.content,
-            properties=[],
+            properties=[
+                SimpleNamespace(id="id", name="ID", type="id", value=out.page_id, mandatory=True),
+                SimpleNamespace(id="title", name="Title", type="title", value=out.title, mandatory=True),
+            ],
         )
         current = self._pages_view.get_pages()
         self._pages_view.set_pages([*current, new_page])
-        self._editor_view.set_page(new_page)
+        self._editor_view.set_page(
+            new_page, property_order=self._current_property_order
+        )
         self._view_stack.setCurrentWidget(self._editor_view)

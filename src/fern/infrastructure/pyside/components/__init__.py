@@ -7,7 +7,10 @@ and PropertyCardsWidget for card-style property layout; CheckboxDelegate for boo
 """
 
 from fern.infrastructure.pyside.components.card import Card
-from fern.infrastructure.pyside.components.delegates import CheckboxDelegate
+from fern.infrastructure.pyside.components.delegates import (
+    CheckboxDelegate,
+    TextEditDelegate,
+)
 from fern.infrastructure.pyside.components.markdown_highlighter import (
     MarkdownHighlighter,
 )
@@ -25,6 +28,7 @@ from fern.infrastructure.pyside.components.table_model import TableModel
 __all__ = [
     "Card",
     "CheckboxDelegate",
+    "TextEditDelegate",
     "MarkdownHighlighter",
     "PropertyCard",
     "PropertyCardsWidget",

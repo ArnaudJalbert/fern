@@ -1,16 +1,23 @@
 from .database import Database
-from .manifest import Manifest
 from .page import Page
-from .properties import BooleanProperty, Property, PropertyType, StringProperty
+from .properties import (
+    BooleanProperty,
+    IdProperty,
+    Property,
+    PropertyType,
+    StringProperty,
+    TitleProperty,
+)
 from .vault import Vault
 
 __all__ = [
     "BooleanProperty",
     "Database",
-    "Manifest",
+    "IdProperty",
     "Page",
     "Property",
     "PropertyType",
     "StringProperty",
+    "TitleProperty",
     "Vault",
 ]

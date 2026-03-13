@@ -6,7 +6,7 @@ Usage (from project root):
     uv run python -m tests.ui_standalone
 
 The window opens on the welcome page. Use Vault > Open... to open a vault.
-Fake data for testing is in tests/standalone/ (open that folder as a vault).
+Fake data for testing is in tests/pyside_standalone/ (open that folder as a vault).
 """
 
 import sys

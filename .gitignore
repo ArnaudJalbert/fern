@@ -21,3 +21,7 @@ dist/
 build/
 *.egg-info/
 *.egg
+
+# Tests
+.coverage
+.coveragerc

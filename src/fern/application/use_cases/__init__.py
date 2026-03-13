@@ -8,6 +8,7 @@ from fern.application.use_cases.open_vault import OpenVaultUseCase
 from fern.application.use_cases.remove_property import RemovePropertyUseCase
 from fern.application.use_cases.update_page_property import UpdatePagePropertyUseCase
 from fern.application.use_cases.update_property import UpdatePropertyUseCase
+from fern.application.use_cases.update_property_order import UpdatePropertyOrderUseCase
 
 __all__ = [
     "AddPropertyUseCase",
@@ -20,4 +21,5 @@ __all__ = [
     "RemovePropertyUseCase",
     "UpdatePagePropertyUseCase",
     "UpdatePropertyUseCase",
+    "UpdatePropertyOrderUseCase",
 ]

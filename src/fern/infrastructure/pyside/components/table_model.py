@@ -27,6 +27,7 @@ class TableModel(QAbstractTableModel):
         super().__init__(parent)
         self._headers: list[str] = headers or []
         self._rows: list[dict] = []
+        self._readonly_columns: set[int] = set()
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         """Return the number of rows. For the root index, returns the length of _rows."""
@@ -79,19 +80,24 @@ class TableModel(QAbstractTableModel):
         return True
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
-        """Return flags so cells are selectable; property columns (col >= 2) and booleans are editable."""
+        """Return flags: all columns are editable unless in _readonly_columns."""
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         base = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         row, col = index.row(), index.column()
         if row < len(self._rows) and col < len(self._headers):
+            if col in self._readonly_columns:
+                return base
             val = self._rows[row].get(self._headers[col])
-            if col >= 2:
-                flags = base | Qt.ItemFlag.ItemIsEditable
-                if isinstance(val, bool):
-                    flags |= Qt.ItemFlag.ItemIsUserCheckable
-                return flags
+            flags = base | Qt.ItemFlag.ItemIsEditable
+            if isinstance(val, bool):
+                flags |= Qt.ItemFlag.ItemIsUserCheckable
+            return flags
         return base
+
+    def set_readonly_columns(self, columns: set[int]) -> None:
+        """Mark column indices as read-only (not editable)."""
+        self._readonly_columns = set(columns)
 
     def headerData(
         self,

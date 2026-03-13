@@ -1,52 +1,55 @@
-/* Vault view: sidebar and content. */
+/* Vault view — sidebar and content */
 
 #vaultView {
-    background-color: #1e1e1e;
-    border-radius: 8px;
+    background-color: #18181b;
+}
+
+#vaultSplitter::handle {
+    width: 0;
+    background-color: transparent;
 }
 
 #vaultSidebar {
-    background-color: #252526;
-    border-right: 1px solid #3c3c3c;
-    border-radius: 0 8px 8px 0;
+    background-color: #27272a;
+    border-right: 1px solid #3f3f46;
 }
 
 #vaultSidebarNav {
     background-color: transparent;
     border: none;
     outline: none;
-    color: #cccccc;
+    color: #a1a1aa;
     font-size: 13px;
-    padding: 2px 0;
+    padding: 4px 8px;
 }
 
 #vaultSidebarNav::item {
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 10px 14px;
+    border-radius: 8px;
 }
 
 #vaultSidebarNav::item:hover {
-    background-color: #2a2d2e;
+    background-color: #3f3f46;
+    color: #fafafa;
 }
 
 #vaultSidebarNav::item:selected {
-    background-color: #166b2a;
+    background-color: #4ade80;
+    color: #18181b;
 }
 
 #vaultContent {
-    background-color: #1e1e1e;
-    border-radius: 8px 0 0 8px;
+    background-color: #18181b;
 }
 
 #vaultContentToolbar {
-    background-color: #252526;
-    border-bottom: 1px solid #3c3c3c;
-    border-radius: 8px 0 0 0;
-    min-height: 44px;
-    max-height: 44px;
+    background-color: #27272a;
+    border-bottom: 1px solid #3f3f46;
+    min-height: 48px;
+    max-height: 48px;
+    padding: 0 20px;
 }
 
-/* currentView is "databases" or "pages" so styles can target the active context */
 #vaultContentStack[currentView="pages"] {
     background-color: transparent;
 }
@@ -54,73 +57,72 @@
 #vaultContentOptionsButton {
     background-color: transparent;
     border: none;
-    border-radius: 6px;
-    color: #9d9d9d;
+    border-radius: 8px;
+    color: #71717a;
     font-size: 18px;
-    padding: 0;
+    padding: 6px;
 }
 
 #vaultContentOptionsButton:hover {
-    background-color: #2a2d2e;
-    color: #cccccc;
+    background-color: #3f3f46;
+    color: #fafafa;
 }
 
 #vaultContentBackButton {
     background-color: transparent;
     border: none;
-    color: #9d9d9d;
-    font-size: 13px;
-    padding: 2px 0;
+    border-radius: 8px;
+    color: #71717a;
+    font-size: 14px;
+    padding: 6px;
 }
 
 #vaultContentBackButton:hover {
-    color: #cccccc;
+    color: #fafafa;
+    background-color: #3f3f46;
 }
 
 #pagesNewPageButton {
-    background-color: #166b2a;
+    background-color: #4ade80;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     color: #ffffff;
     font-size: 13px;
-    min-width: 96px;
-    height: 32px;
-    min-height: 32px;
-    max-height: 32px;
-    padding: 0 16px;
+    font-weight: 500;
+    min-width: 100px;
+    height: 36px;
+    padding: 0 18px;
 }
 
 #pagesNewPageButton:hover {
-    background-color: #1e8c34;
+    background-color: #22c55e;
 }
 
 #pagesNewPageButton:pressed {
-    background-color: #22a03d;
+    background-color: #16a34a;
 }
 
-#vaultContentStack {
-    background-color: transparent;
-}
-
-#vaultContentScroll {
+#vaultContentStack,
+#vaultContentScroll,
+#vaultContentCards {
     background-color: transparent;
 }
 
 #vaultContentCards {
-    background-color: transparent;
-    padding: 32px;
+    padding: 28px 32px;
 }
 
-/* Options menu and View submenu: hover and current (checked) highlight */
 QMenu {
-    background-color: #252526;
-    color: #cccccc;
-    border-radius: 8px;
+    background-color: #27272a;
+    color: #fafafa;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    padding: 6px 0;
 }
 
 QMenu::item {
-    padding: 6px 24px;
-    border-radius: 4px;
+    padding: 8px 20px;
+    border-radius: 6px;
 }
 
 QMenu::indicator {
@@ -133,15 +135,10 @@ QMenu::indicator {
 }
 
 QMenu::item:selected {
-    background-color: #2a2d2e;
+    background-color: #3f3f46;
 }
 
 QMenu::item:checked {
-    background-color: #166b2a;
-    color: #ffffff;
-}
-
-QMenu::item:checked:selected {
-    background-color: #1e8c34;
-    color: #ffffff;
+    background-color: #4ade80;
+    color: #18181b;
 }

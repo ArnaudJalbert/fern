@@ -5,12 +5,16 @@ from __future__ import annotations
 from enum import Enum
 
 from .boolean import BooleanProperty
+from .id_ import IdProperty
 from .string import StringProperty
+from .title import TitleProperty
 
 
 class PropertyType(Enum):
     """Property type; each member's value is the class implementing that type."""
 
+    ID = IdProperty
+    TITLE = TitleProperty
     BOOLEAN = BooleanProperty
     STRING = StringProperty
 
@@ -25,4 +29,9 @@ class PropertyType(Enum):
         for member in cls:
             if getattr(member.value, "TYPE_KEY", member.name.lower()) == key:
                 return member
-        return cls.BOOLEAN  # fallback for unknown keys
+        return cls.BOOLEAN
+
+    @classmethod
+    def user_creatable(cls) -> list[PropertyType]:
+        """Return property types that users can add (excludes mandatory types)."""
+        return [cls.BOOLEAN, cls.STRING]

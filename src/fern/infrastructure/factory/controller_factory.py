@@ -103,37 +103,47 @@ class ControllerFactory:
         ):
             from fern.application.use_cases.add_property import AddPropertyUseCase
             from fern.domain.entities import PropertyType
-            from fern.interface_adapters.repositories.json_manifest_repository import (
-                JsonManifestRepository,
-            )
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
+            from fern.interface_adapters.repositories.vault_database_repository import (
+                VaultDatabaseRepository,
+            )
 
-            db_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            manifest_repo = JsonManifestRepository(db_dir)
-            page_repo = MarkdownPageRepository(db_dir)
-            use_case = AddPropertyUseCase(manifest_repo, page_repo)
+            db_repo = VaultDatabaseRepository(vault_path)
+            page_repo = MarkdownPageRepository(
+                Path(vault_path) / DATABASES_DIRNAME / database_name
+            )
+            use_case = AddPropertyUseCase(db_repo, page_repo)
             ptype = PropertyType.from_key(property_type)
             return use_case.execute(
-                AddPropertyUseCase.Input(property_id=property_id, name=name, type=ptype)
+                AddPropertyUseCase.Input(
+                    database_name=database_name,
+                    property_id=property_id,
+                    name=name,
+                    type=ptype,
+                )
             )
 
         def remove_property(vault_path: Path, database_name: str, property_id: str):
             from fern.application.use_cases.remove_property import RemovePropertyUseCase
-            from fern.interface_adapters.repositories.json_manifest_repository import (
-                JsonManifestRepository,
-            )
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
+            from fern.interface_adapters.repositories.vault_database_repository import (
+                VaultDatabaseRepository,
+            )
 
-            db_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            manifest_repo = JsonManifestRepository(db_dir)
-            page_repo = MarkdownPageRepository(db_dir)
-            use_case = RemovePropertyUseCase(manifest_repo, page_repo)
+            db_repo = VaultDatabaseRepository(vault_path)
+            page_repo = MarkdownPageRepository(
+                Path(vault_path) / DATABASES_DIRNAME / database_name
+            )
+            use_case = RemovePropertyUseCase(db_repo, page_repo)
             return use_case.execute(
-                RemovePropertyUseCase.Input(property_id=property_id)
+                RemovePropertyUseCase.Input(
+                    database_name=database_name,
+                    property_id=property_id,
+                )
             )
 
         def update_property(
@@ -144,22 +154,45 @@ class ControllerFactory:
             new_type: str | None = None,
         ):
             from fern.application.use_cases.update_property import UpdatePropertyUseCase
-            from fern.interface_adapters.repositories.json_manifest_repository import (
-                JsonManifestRepository,
-            )
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
+            from fern.interface_adapters.repositories.vault_database_repository import (
+                VaultDatabaseRepository,
+            )
 
-            db_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            manifest_repo = JsonManifestRepository(db_dir)
-            page_repo = MarkdownPageRepository(db_dir)
-            use_case = UpdatePropertyUseCase(manifest_repo, page_repo)
+            db_repo = VaultDatabaseRepository(vault_path)
+            page_repo = MarkdownPageRepository(
+                Path(vault_path) / DATABASES_DIRNAME / database_name
+            )
+            use_case = UpdatePropertyUseCase(db_repo, page_repo)
             return use_case.execute(
                 UpdatePropertyUseCase.Input(
+                    database_name=database_name,
                     property_id=property_id,
                     new_name=new_name,
                     new_type=new_type,
+                )
+            )
+
+        def update_property_order(
+            vault_path: Path,
+            database_name: str,
+            property_order: tuple[str, ...],
+        ):
+            from fern.application.use_cases.update_property_order import (
+                UpdatePropertyOrderUseCase,
+            )
+            from fern.interface_adapters.repositories.vault_database_repository import (
+                VaultDatabaseRepository,
+            )
+
+            db_repo = VaultDatabaseRepository(Path(vault_path).resolve())
+            use_case = UpdatePropertyOrderUseCase(db_repo)
+            return use_case.execute(
+                UpdatePropertyOrderUseCase.Input(
+                    database_name=database_name,
+                    property_order=property_order,
                 )
             )
 
@@ -198,5 +231,6 @@ class ControllerFactory:
             add_property=add_property,
             remove_property=remove_property,
             update_property=update_property,
+            update_property_order=update_property_order,
             update_page_property=update_page_property,
         )

@@ -9,7 +9,7 @@ from fern.domain.entities.properties import Property
 class Page:
     """A page with id, title, content, and a list of properties (each with id, name, type, value)."""
 
-    id: int
+    id: intal
     title: str
     content: str
     properties: list[Property] = field(default_factory=list)
