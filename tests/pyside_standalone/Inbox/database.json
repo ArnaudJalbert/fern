@@ -18,9 +18,9 @@
   ],
   "propertyOrder": [
     "title",
+    "test",
     "priority",
     "done",
-    "id",
-    "test"
+    "id"
   ]
 }

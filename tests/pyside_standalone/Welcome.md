@@ -13,3 +13,6 @@ This is a sample vault for testing **Fern**. It contains:
 - **Journal** — a folder with loose daily notes
 
 Feel free to explore, edit pages, and create new databases.
+
+ 1. Test
+ 2. Allo
