@@ -1,6 +1,6 @@
 [project]
 name = "fern"
-version = "0.1.0"
+version = "0.2.0"
 description = "An open files and open source alternative to Notion and AppFlowy for tasks and pages viewing and management."
 readme = "README.md"
 requires-python = ">=3.13"
