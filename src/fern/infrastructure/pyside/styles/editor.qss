@@ -1,0 +1,102 @@
+/* Page editor — inputs and property cards */
+
+#editorPropertiesContainer {
+    background-color: transparent;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    padding: 2px;
+}
+
+#propertyCardsWidget,
+#propertyCard {
+    background-color: transparent;
+    border: none;
+}
+
+#propertyField {
+    min-height: 32px;
+}
+
+#propertyFieldLabel {
+    color: #a1a1aa;
+    font-size: 13px;
+}
+
+#propertyFieldCheckbox {
+    color: #fafafa;
+}
+
+#propertyFieldLineEdit {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    color: #fafafa;
+    font-size: 13px;
+    padding: 8px 12px;
+    min-width: 200px;
+}
+
+#propertyFieldLineEdit:focus {
+    border-color: #4ade80;
+}
+
+#propertySettingsWidget QLineEdit,
+#propertySettingsName {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    color: #fafafa;
+    padding: 8px 12px;
+}
+
+#propertySettingsWidget QComboBox,
+#propertySettingsType {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 8px;
+    color: #fafafa;
+    padding: 8px 12px;
+    min-height: 20px;
+}
+
+#editorTitleEdit {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    color: #fafafa;
+    font-size: 18px;
+    font-weight: 500;
+    padding: 12px 16px;
+}
+
+#editorTitleEdit:focus {
+    border-color: #4ade80;
+}
+
+#editorContentEdit {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 10px;
+    color: #fafafa;
+    font-size: 14px;
+    padding: 16px;
+}
+
+#editorContentEdit:focus {
+    border-color: #4ade80;
+}
+
+#editorDeleteButton {
+    background-color: transparent;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    color: #f87171;
+    font-size: 13px;
+    height: 36px;
+    padding: 0 14px;
+}
+
+#editorDeleteButton:hover {
+    background-color: #7f1d1d;
+    color: #fecaca;
+}

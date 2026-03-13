@@ -1,0 +1,158 @@
+# GitLab CI:
+# - On merge requests: version/changelog check, unit tests, package build
+# - On push to main: build, publish to Package Registry, create release + tag
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+stages:
+  - check
+  - test
+  - build
+  - release
+
+# --- Stage: check (version + changelog) — MR only ---
+
+version-and-changelog:
+  stage: check
+  image: alpine:latest
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  before_script:
+    - apk add --no-cache git
+    # Fetch target branch so we can read its pyproject.toml
+    - git fetch origin "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}"
+  script:
+    - |
+      TARGET_REF="origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}"
+      VERSION_FILE="pyproject.toml"
+      CHANGELOG_FILE="CHANGELOG.md"
+
+      # Version on target branch (e.g. main)
+      VERSION_TARGET=$(git show "$TARGET_REF:$VERSION_FILE" 2>/dev/null | sed -n 's/^version = "\(.*\)"/\1/p' | head -1)
+      # Version on current branch (MR source)
+      VERSION_CURRENT=$(sed -n 's/^version = "\(.*\)"/\1/p' "$VERSION_FILE" | head -1)
+
+      if [ -z "$VERSION_CURRENT" ]; then
+        echo "Could not read version from $VERSION_FILE"
+        exit 1
+      fi
+
+      # No version on target branch (e.g. first MR to empty main): skip version and changelog check
+      if [ -z "$VERSION_TARGET" ]; then
+        echo "No version on target branch ($TARGET_REF). Skipping version and changelog check."
+        exit 0
+      fi
+
+      if [ "$VERSION_CURRENT" = "$VERSION_TARGET" ]; then
+        echo "Version must be changed when opening a merge request."
+        echo "  Target branch ($CI_MERGE_REQUEST_TARGET_BRANCH_NAME) version: $VERSION_TARGET"
+        echo "  Your branch version: $VERSION_CURRENT"
+        echo "Bump the version in pyproject.toml (e.g. 0.1.0 -> 0.1.1 or 0.2.0) and push."
+        exit 1
+      fi
+
+      echo "Version changed: $VERSION_TARGET -> $VERSION_CURRENT ✓"
+
+      # Changelog must contain a section for the new version (Keep a Changelog: ## [x.y.z])
+      if [ ! -f "$CHANGELOG_FILE" ]; then
+        echo "CHANGELOG.md is missing. Add a changelog with a section for version $VERSION_CURRENT (e.g. ## [$VERSION_CURRENT])."
+        exit 1
+      fi
+      if ! grep -qF "## [$VERSION_CURRENT]" "$CHANGELOG_FILE"; then
+        echo "CHANGELOG.md must contain a section for version $VERSION_CURRENT."
+        echo "Add a line: ## [$VERSION_CURRENT] - YYYY-MM-DD"
+        echo "See https://keepachangelog.com/en/1.1.0/"
+        exit 1
+      fi
+      echo "CHANGELOG.md has an entry for $VERSION_CURRENT ✓"
+
+# --- Stage: test (unit tests with uv) — MR only ---
+
+.uv-setup: &uv-setup
+  before_script:
+    - pip install uv
+    - uv sync --all-groups
+
+unit-tests:
+  stage: test
+  image: python:3.13-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  <<: *uv-setup
+  script:
+    - uv run pytest tests/unit_tests/ --cov --cov-report=term-missing
+  coverage: '/(?i)total.*? (100(?:\.0+)?)%/'
+
+# --- Stage: build (package build) ---
+
+build-package:
+  stage: build
+  image: python:3.13-slim
+  before_script:
+    - pip install uv
+    - uv sync --no-dev
+  script:
+    - uv build
+  artifacts:
+    paths:
+      - dist/
+
+# --- Stage: release — main only: publish to Package Registry, create tag + release ---
+
+# Publish to GitLab Package Registry (project PyPI registry)
+publish-package:
+  stage: release
+  image: python:3.13-slim
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - build-package
+  variables:
+    TWINE_USERNAME: gitlab-ci-token
+    TWINE_PASSWORD: $CI_JOB_TOKEN
+  before_script:
+    - pip install twine
+  script:
+    - twine upload --repository-url "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi" dist/*
+
+# Publish to PyPI (public). Set CI/CD variable PYPI_API_TOKEN in Settings > CI/CD > Variables.
+publish-pypi:
+  stage: release
+  image: python:3.13-slim
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs:
+    - build-package
+  variables:
+    TWINE_USERNAME: __token__
+    TWINE_PASSWORD: $PYPI_API_TOKEN
+  before_script:
+    - pip install twine
+  script:
+    - twine upload dist/*
+
+create-release:
+  stage: release
+  image: alpine:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)
+      TAG_NAME="v${VERSION}"
+      if [ -z "$VERSION" ]; then
+        echo "Could not read version from pyproject.toml"
+        exit 1
+      fi
+      echo "Creating release ${TAG_NAME} (tag + release)"
+      curl --fail --request POST \
+        --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+        --header "Content-Type: application/json" \
+        --data "{\"tag_name\": \"${TAG_NAME}\", \"name\": \"${TAG_NAME}\", \"description\": \"Release ${VERSION}\"}" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"

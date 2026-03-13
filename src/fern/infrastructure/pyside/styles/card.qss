@@ -1,0 +1,29 @@
+/* Cards — subtle elevation and hover */
+
+#fernCard {
+    background-color: #27272a;
+    border: 1px solid #3f3f46;
+    border-radius: 12px;
+    min-width: 180px;
+    min-height: 84px;
+}
+
+#fernCard:hover {
+    background-color: #3f3f46;
+    border-color: #52525b;
+}
+
+#fernCardIcon {
+    background-color: transparent;
+}
+
+#fernCardTitle {
+    color: #fafafa;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#fernCardSubtitle {
+    color: #71717a;
+    font-size: 12px;
+}
