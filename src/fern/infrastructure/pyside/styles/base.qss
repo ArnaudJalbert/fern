@@ -1,0 +1,11 @@
+/* App-wide base — modern dark theme */
+
+QWidget {
+    background-color: #18181b;
+    color: #fafafa;
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+}
+
+QMainWindow {
+    background-color: #18181b;
+}
