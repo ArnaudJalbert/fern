@@ -9,16 +9,32 @@ import sys
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QLineEdit, QPlainTextEdit, QPushButton, QSizePolicy
+from PySide6.QtWidgets import (
+    QFrame,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QPlainTextEdit,
+    QScrollArea,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
 
+from fern.infrastructure.pyside.actions import get_editor_view_actions
 from fern.infrastructure.pyside.components import (
     MarkdownHighlighter,
     PropertyCard,
     PropertyCardsWidget,
 )
-from fern.infrastructure.pyside.utils import property_type_key, set_expanding
+from fern.infrastructure.pyside.utils import (
+    add_colored_action,
+    property_type_key,
+    set_expanding,
+)
 
 from .base import FernView
+from .page_data import PropertyData
 
 _SAVE_DEBOUNCE_MS = 800
 
@@ -35,12 +51,15 @@ class EditorView(FernView):
     page_saved = Signal(object)
     save_requested = Signal()
     delete_requested = Signal()
+    add_property_requested = Signal()
     property_value_changed = Signal(object, str, object)  # page, property_id, value
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("editorView")
         self._page = None
+        self._property_order: tuple[str, ...] | None = None
+        self._in_database = False
         self._property_cards_widget: PropertyCardsWidget | None = None
         self._save_timer = QTimer(self)
         self._save_timer.setSingleShot(True)
@@ -50,42 +69,94 @@ class EditorView(FernView):
         set_expanding(self, horizontal=True, vertical=True)
 
     def _build_content(self) -> None:
-        self.content_layout().setContentsMargins(24, 16, 24, 0)
-        self.content_layout().setSpacing(12)
+        self.options_clicked.connect(self._on_options_clicked)
 
-        delete_btn = QPushButton("Delete")
-        delete_btn.setObjectName("editorDeleteButton")
-        delete_btn.clicked.connect(self.delete_requested.emit)
-        self.add_toolbar_widget(delete_btn)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setObjectName("editorSplitter")
+        set_expanding(splitter, horizontal=True, vertical=True)
+
+        # Left: title + markdown content
+        left = QWidget()
+        left_layout = QVBoxLayout(left)
+        left_layout.setContentsMargins(24, 16, 16, 0)
+        left_layout.setSpacing(12)
 
         self._title_edit = QLineEdit()
         self._title_edit.setObjectName("editorTitleEdit")
         self._title_edit.setPlaceholderText("Title")
         self._title_edit.textChanged.connect(self._on_text_changed)
-        self.content_layout().addWidget(self._title_edit)
-
-        self._property_cards_widget = PropertyCardsWidget()
-        self._property_cards_widget.setObjectName("editorPropertiesContainer")
-        self._property_cards_widget.setMinimumWidth(320)
-        set_expanding(self._property_cards_widget, horizontal=True, vertical=False)
-        self.content_layout().addWidget(
-            self._property_cards_widget, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
+        left_layout.addWidget(self._title_edit)
 
         self._content_edit = QPlainTextEdit()
         self._content_edit.setObjectName("editorContentEdit")
         self._content_edit.setPlaceholderText("Content (Markdown)…")
-        font = QFont("Monaco", 13) if sys.platform == "darwin" else QFont("Consolas", 13)
+        font = (
+            QFont("Monaco", 13) if sys.platform == "darwin" else QFont("Consolas", 13)
+        )
         self._content_edit.setFont(font)
         MarkdownHighlighter(self._content_edit.document())
         self._content_edit.textChanged.connect(self._on_text_changed)
         self._content_edit.setMinimumHeight(80)
         self._content_edit.setMinimumWidth(0)
         set_expanding(self._content_edit, horizontal=True, vertical=True)
-        self.content_layout().addWidget(self._content_edit, 1)
-        self.content_layout().setStretchFactor(self._content_edit, 1)
-        self.content_layout().setStretchFactor(self._title_edit, 0)
-        self.content_layout().setStretchFactor(self._property_cards_widget, 0)
+        left_layout.addWidget(self._content_edit, 1)
+
+        splitter.addWidget(left)
+
+        # Right: properties side panel
+        self._side_panel = QFrame()
+        self._side_panel.setObjectName("editorPropertiesSidePanel")
+        self._side_panel.setMinimumWidth(220)
+        self._side_panel.setMaximumWidth(400)
+        panel_layout = QVBoxLayout(self._side_panel)
+        panel_layout.setContentsMargins(12, 10, 12, 12)
+        panel_layout.setSpacing(6)
+
+        panel_title = QLabel("Properties")
+        panel_title.setObjectName("editorPropertiesPanelTitle")
+        panel_layout.addWidget(panel_title)
+
+        scroll = QScrollArea()
+        scroll.setObjectName("editorPropertiesScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        self._property_cards_widget = PropertyCardsWidget()
+        self._property_cards_widget.setObjectName("editorPropertiesContainer")
+        scroll.setWidget(self._property_cards_widget)
+        panel_layout.addWidget(scroll, 1)
+
+        splitter.addWidget(self._side_panel)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        splitter.setSizes([700, 280])
+
+        self.content_layout().setContentsMargins(0, 0, 0, 0)
+        self.content_layout().addWidget(splitter)
+
+    def _on_options_clicked(self) -> None:
+        menu = QMenu(self)
+        callbacks = {
+            "add_property": self.add_property_requested.emit,
+            "delete": self.delete_requested.emit,
+        }
+        for item in get_editor_view_actions():
+            if item.is_separator:
+                menu.addSeparator()
+                continue
+            if item.id == "add_property" and not self._in_database:
+                continue
+            cb = callbacks.get(item.id)
+            if cb is None:
+                continue
+            if item.color:
+                add_colored_action(menu, item.label, item.color, cb)
+            else:
+                action = menu.addAction(item.label)
+                action.triggered.connect(cb)
+        btn = self._options_btn
+        menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
     def _on_text_changed(self) -> None:
         if self._page is not None:
@@ -110,8 +181,9 @@ class EditorView(FernView):
         if self._property_cards_widget is None:
             return
         props = [
-            p for p in getattr(page, "properties", [])
-            if getattr(p, "type", "") not in ("id", "title")
+            p
+            for p in getattr(page, "properties", [])
+            if property_type_key(getattr(p, "type", "")) not in ("id", "title")
         ]
         if property_order:
             order_ids = [i for i in property_order if i not in ("id", "title")]
@@ -130,14 +202,20 @@ class EditorView(FernView):
                 property_type=type_key,
                 value=value,
                 property_id=pid,
+                vertical=False,
+                label_width=90,
                 parent=self._property_cards_widget,
             )
-            card.value_changed.connect(lambda _val, c=card: self._on_property_value_changed(c))
+            card.value_changed.connect(
+                lambda _val, c=card: self._on_property_value_changed(c)
+            )
             self._property_cards_widget.add_card(card)
 
-    def set_page(self, page, property_order=None) -> None:
+    def set_page(self, page, property_order=None, *, in_database: bool = False) -> None:
         self._save_timer.stop()
         self._page = page
+        self._property_order = tuple(property_order) if property_order else None
+        self._in_database = in_database
         if page is None:
             self._title_edit.clear()
             self._clear_properties()
@@ -152,6 +230,13 @@ class EditorView(FernView):
         self._title_edit.blockSignals(False)
         self._content_edit.blockSignals(False)
         self._rebuild_properties(page, property_order=property_order)
+
+    def add_property_to_current_page(self, property_data: PropertyData) -> None:
+        """Append a property to the current page and refresh the property cards."""
+        if self._page is None or not hasattr(self._page, "properties"):
+            return
+        self._page.properties.append(property_data)
+        self._rebuild_properties(self._page, property_order=self._property_order)
 
     def get_edited_page_data(self) -> tuple[int, str, str] | None:
         if self._page is None:

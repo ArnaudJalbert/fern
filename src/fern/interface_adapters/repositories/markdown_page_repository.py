@@ -67,7 +67,9 @@ def _page_from_file(path: Path) -> Page | None:
     title = path.stem
     content = post.content or ""
     properties = _properties_from_raw(post.get("properties"))
-    return Page(id=page_id, title=title, content=content, properties=properties)
+    return Page(
+        id=page_id, title=title, content=content, properties=properties, folder=""
+    )
 
 
 class MarkdownPageRepository(PageRepository):
@@ -81,8 +83,9 @@ class MarkdownPageRepository(PageRepository):
     The filename (without .md) is the page title. The content is everything after the closing ---.
     """
 
-    def __init__(self, pages_dir: Path | str) -> None:
+    def __init__(self, pages_dir: Path | str, *, folder: str = "") -> None:
         self._pages_dir = Path(pages_dir)
+        self._folder = folder
 
     def get_by_id(self, page_id: int) -> Page | None:
         for path in self._pages_dir.glob("*.md"):
@@ -90,7 +93,13 @@ class MarkdownPageRepository(PageRepository):
                 continue
             page = _page_from_file(path)
             if page is not None and page.id == page_id:
-                return page
+                return Page(
+                    id=page.id,
+                    title=page.title,
+                    content=page.content,
+                    properties=page.properties,
+                    folder=self._folder,
+                )
         return None
 
     def list_all(self) -> list[Page]:
@@ -100,7 +109,15 @@ class MarkdownPageRepository(PageRepository):
                 continue
             page = _page_from_file(path)
             if page is not None:
-                result.append(page)
+                result.append(
+                    Page(
+                        id=page.id,
+                        title=page.title,
+                        content=page.content,
+                        properties=page.properties,
+                        folder=self._folder,
+                    )
+                )
         return result
 
     def update(
@@ -109,7 +126,7 @@ class MarkdownPageRepository(PageRepository):
         title: str,
         content: str,
         *,
-        properties: dict | None = None,
+        properties: list | None = None,
     ) -> None:
         self._pages_dir.mkdir(parents=True, exist_ok=True)
         old_path: Path | None = None
@@ -153,7 +170,13 @@ class MarkdownPageRepository(PageRepository):
                     break
         post = frontmatter.Post(content, **{"id": next_id, "properties": []})
         path.write_text(frontmatter.dumps(post), encoding="utf-8")
-        return Page(id=next_id, title=path.stem, content=content, properties=[])
+        return Page(
+            id=next_id,
+            title=path.stem,
+            content=content,
+            properties=[],
+            folder=self._folder,
+        )
 
     def delete(self, page_id: int) -> None:
         for path in self._pages_dir.glob("*.md"):

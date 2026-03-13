@@ -1,4 +1,9 @@
-"""Filesystem implementation of DatabaseRepository: databases are subdirs of vault/Databases/."""
+"""Filesystem implementation of DatabaseRepository.
+
+Databases are any folder in the vault that contains a database.json marker file.
+The marker stores the schema (properties + display order). Pages are .md files
+in the same folder.
+"""
 
 import json
 import os
@@ -10,11 +15,12 @@ from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
 )
 
-DATABASES_DIRNAME = "Databases"
-SCHEMA_FILENAME = "schema.json"
+DATABASE_MARKER = "database.json"
 
 ID_PROPERTY = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-TITLE_PROPERTY = Property(id="title", name="Title", type=PropertyType.TITLE, mandatory=True)
+TITLE_PROPERTY = Property(
+    id="title", name="Title", type=PropertyType.TITLE, mandatory=True
+)
 
 
 def _property_from_dict(d: dict) -> Property:
@@ -49,8 +55,8 @@ def ensure_mandatory_properties(
 
 
 def _read_schema(db_dir: Path) -> tuple[list[Property], list[str]]:
-    """Read properties and property_order from schema.json in db_dir."""
-    path = db_dir / SCHEMA_FILENAME
+    """Read properties and property_order from database.json in db_dir."""
+    path = db_dir / DATABASE_MARKER
     if not path.is_file():
         return ([], [])
     try:
@@ -64,9 +70,7 @@ def _read_schema(db_dir: Path) -> tuple[list[Property], list[str]]:
     else:
         order = []
     properties = [
-        _property_from_dict(p)
-        for p in props
-        if isinstance(p, dict) and "id" in p
+        _property_from_dict(p) for p in props if isinstance(p, dict) and "id" in p
     ]
     return (properties, order)
 
@@ -74,10 +78,10 @@ def _read_schema(db_dir: Path) -> tuple[list[Property], list[str]]:
 def _write_schema(
     db_dir: Path, properties: list[Property], property_order: list[str]
 ) -> None:
-    """Write properties and property_order to schema.json in db_dir."""
+    """Write properties and property_order to database.json in db_dir."""
     dir_path = Path(db_dir).resolve()
     dir_path.mkdir(parents=True, exist_ok=True)
-    file_path = dir_path / SCHEMA_FILENAME
+    file_path = dir_path / DATABASE_MARKER
     user_props = [p for p in properties if not getattr(p, "mandatory", False)]
     data = {
         "properties": [_property_to_dict(p) for p in user_props],
@@ -90,46 +94,87 @@ def _write_schema(
         os.fsync(f.fileno())
 
 
+def is_database_folder(folder: Path) -> bool:
+    """Return True if the folder contains a database.json marker."""
+    return (folder / DATABASE_MARKER).is_file()
+
+
+def find_databases(vault_path: Path) -> list[Path]:
+    """Recursively find all folders under vault_path that contain database.json.
+
+    Skips hidden directories (starting with .).
+    Does not descend into database folders (a DB cannot be nested inside another).
+    """
+    result: list[Path] = []
+    _scan(vault_path, result)
+    return result
+
+
+def _scan(directory: Path, out: list[Path]) -> None:
+    """DFS scan for database.json markers."""
+    try:
+        entries = sorted(directory.iterdir())
+    except OSError:
+        return
+    for entry in entries:
+        try:
+            if not entry.is_dir() or entry.name.startswith("."):
+                continue
+        except OSError:
+            continue
+        if is_database_folder(entry):
+            out.append(entry)
+        else:
+            _scan(entry, out)
+
+
+def database_name_from_path(vault_path: Path, db_path: Path) -> str:
+    """Return the relative path from vault root to the database folder as the DB name.
+
+    e.g. vault/Projects/Tasks -> 'Projects/Tasks'
+    """
+    try:
+        return str(db_path.relative_to(vault_path))
+    except ValueError:
+        return db_path.name
+
+
 class VaultDatabaseRepository(DatabaseRepository):
-    """Databases are subdirectories of vault_path/Databases/; schema stored in schema.json."""
+    """Databases are any folder under vault_path containing database.json."""
 
     def __init__(self, vault_path: Path | str) -> None:
         self._vault_path = Path(vault_path)
 
-    def _databases_dir(self) -> Path:
-        return self._vault_path / DATABASES_DIRNAME
-
     def _resolve_db_dir(self, database_name: str) -> Path | None:
-        """Find the exact database directory by name (case-sensitive then insensitive)."""
-        databases_dir = self._databases_dir()
-        if not databases_dir.is_dir():
-            return None
-        for d in databases_dir.iterdir():
-            if d.is_dir() and not d.name.startswith(".") and d.name == database_name:
-                return d
-        for d in databases_dir.iterdir():
-            if d.is_dir() and not d.name.startswith(".") and d.name.lower() == database_name.lower():
-                return d
+        """Find the exact database directory by relative name."""
+        candidate = self._vault_path / database_name
+        if candidate.is_dir() and is_database_folder(candidate):
+            return candidate
+        # Case-insensitive fallback: scan all databases
+        target = database_name.lower()
+        for db_path in find_databases(self._vault_path):
+            name = database_name_from_path(self._vault_path, db_path)
+            if name.lower() == target:
+                return db_path
         return None
 
     def list_all(self) -> list[Database]:
-        databases_dir = self._databases_dir()
-        if not databases_dir.is_dir():
-            return []
         result = []
-        for d in databases_dir.iterdir():
-            if not d.is_dir() or d.name.startswith("."):
-                continue
-            page_repo = MarkdownPageRepository(d)
+        for db_path in find_databases(self._vault_path):
+            folder = database_name_from_path(self._vault_path, db_path)
+            page_repo = MarkdownPageRepository(db_path, folder=folder)
             pages = page_repo.list_all()
-            properties, property_order = _read_schema(d)
-            properties, property_order = ensure_mandatory_properties(properties, property_order)
+            properties, property_order = _read_schema(db_path)
+            properties, property_order = ensure_mandatory_properties(
+                properties, property_order
+            )
             result.append(
                 Database(
-                    name=d.name,
+                    name=folder,
                     pages=pages,
                     properties=properties,
                     property_order=property_order,
+                    folder=folder,
                 )
             )
         return result
@@ -139,7 +184,9 @@ class VaultDatabaseRepository(DatabaseRepository):
         if db_dir is None:
             return ([], [])
         properties, property_order = _read_schema(db_dir)
-        properties, property_order = ensure_mandatory_properties(properties, property_order)
+        properties, property_order = ensure_mandatory_properties(
+            properties, property_order
+        )
         return (properties, property_order)
 
     def save_schema(
@@ -148,6 +195,6 @@ class VaultDatabaseRepository(DatabaseRepository):
         db_dir = self._resolve_db_dir(database_name)
         if db_dir is None:
             raise FileNotFoundError(
-                f"Database folder not found: {database_name!r} in {self._databases_dir()}"
+                f"Database folder not found: {database_name!r} in {self._vault_path}"
             )
         _write_schema(db_dir, properties, property_order)

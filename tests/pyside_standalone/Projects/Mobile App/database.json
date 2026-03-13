@@ -1,0 +1,32 @@
+{
+  "properties": [
+    {
+      "id": "status",
+      "name": "Status",
+      "type": "string"
+    },
+    {
+      "id": "platform",
+      "name": "Platform",
+      "type": "string"
+    },
+    {
+      "id": "done",
+      "name": "Done",
+      "type": "boolean"
+    },
+    {
+      "id": "allo",
+      "name": "Allo",
+      "type": "boolean"
+    }
+  ],
+  "propertyOrder": [
+    "title",
+    "status",
+    "platform",
+    "done",
+    "id",
+    "allo"
+  ]
+}

@@ -84,7 +84,6 @@ unit-tests:
   <<: *uv-setup
   script:
     - uv run pytest tests/unit_tests/ --cov --cov-report=term-missing
-  coverage: '/(?i)total.*? (100(?:\.0+)?)%/'
 
 # --- Stage: build (package build) ---
 
