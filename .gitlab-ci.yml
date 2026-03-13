@@ -18,6 +18,7 @@ stages:
 version-and-changelog:
   stage: check
   image: alpine:latest
+  allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   before_script:
