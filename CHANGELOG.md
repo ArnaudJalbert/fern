@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Save column order**: Persist display order to `schema.json` via the options menu.
 - **`UpdatePropertyOrderUseCase`**: New use case for persisting property display order.
 - **Unit tests**: Comprehensive test suite (149 tests, 99% coverage on domain/application/interface_adapters).
-- **Splash screen**: Frameless loading screen with progress bar shown during startup.
 
 ### Changed
 
