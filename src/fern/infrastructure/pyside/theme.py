@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 # Load order: base first, then feature-specific (later files override when same selector).
 _STYLE_FILES = (
     "base.qss",
+    "splash.qss",
     "welcome.qss",
     "card.qss",
     "table.qss",

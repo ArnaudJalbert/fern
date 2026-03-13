@@ -1,0 +1,31 @@
+/* Splash screen */
+
+#splashCard {
+    background-color: #1e1e22;
+    border: 1px solid #2e2e34;
+    border-radius: 16px;
+}
+
+#splashTitle {
+    color: #4ade80;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+#splashSubtitle {
+    color: #71717a;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+#splashProgress {
+    background-color: #27272a;
+    border: none;
+    border-radius: 3px;
+}
+
+#splashProgress::chunk {
+    background-color: #4ade80;
+    border-radius: 3px;
+}
