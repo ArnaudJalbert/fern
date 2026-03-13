@@ -40,8 +40,9 @@ version-and-changelog:
         exit 1
       fi
 
+      # No version on target branch (e.g. first MR to empty main): skip version and changelog check
       if [ -z "$VERSION_TARGET" ]; then
-        echo "Could not read version from target branch ($TARGET_REF); allowing (e.g. first MR)."
+        echo "No version on target branch ($TARGET_REF). Skipping version and changelog check."
         exit 0
       fi
 
