@@ -99,20 +99,26 @@ class PropertyField(QWidget):
         property_id: str = "",
         *,
         vertical: bool = False,
+        label_width: int | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("propertyField")
         self._property_id = property_id
         self._vertical = vertical
+        self._label_width = label_width
         self._layout = QVBoxLayout(self) if vertical else QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(4)
         self._label = QLabel(label)
         self._label.setObjectName("propertyFieldLabel")
         if not vertical:
-            self._label.setFixedWidth(120)
-        self._label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self._label.setFixedWidth(label_width if label_width is not None else 120)
+        else:
+            self._label.setWordWrap(True)
+        self._label.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         self._layout.addWidget(self._label, 0)
         self._editor_widget: QWidget | None = None
         self._get_value: Callable[[QWidget], Any] | None = None
@@ -134,7 +140,9 @@ class PropertyField(QWidget):
         """Update label, switch editor to the given type, and set value."""
         self._label.setText(label)
         type_key = (property_type or "string").strip().lower()
-        adapter = _REGISTRY.get(type_key) or _REGISTRY.get("string", _REGISTRY["string"])
+        adapter = _REGISTRY.get(type_key) or _REGISTRY.get(
+            "string", _REGISTRY["string"]
+        )
         create, get_val, set_val, connect = adapter
 
         if self._editor_widget is not None:
@@ -147,7 +155,10 @@ class PropertyField(QWidget):
         self._set_value = set_val
         self._set_value(self._editor_widget, value)
         connect(self._editor_widget, self._emit_value_changed)
-        self._editor_widget.setMinimumWidth(180 if self._vertical else 200)
+        editor_min = (
+            180 if self._vertical else (100 if self._label_width is not None else 200)
+        )
+        self._editor_widget.setMinimumWidth(editor_min)
         sp = self._editor_widget.sizePolicy()
         sp.setHorizontalPolicy(QSizePolicy.Policy.Expanding)
         self._editor_widget.setSizePolicy(sp)

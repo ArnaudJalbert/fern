@@ -10,44 +10,94 @@
 }
 
 #vaultSidebar {
-    background-color: #27272a;
-    border-right: 1px solid #3f3f46;
+    background-color: #1f1f23;
+    border-right: 1px solid #27272a;
 }
 
-#vaultSidebarNav {
+/* ── Tree view ─────────────────────────────────────────────── */
+
+#vaultSidebarTree {
     background-color: transparent;
     border: none;
     outline: none;
-    color: #a1a1aa;
-    font-size: 13px;
-    padding: 4px 8px;
+    color: #71717a;
+    font-size: 12px;
+    padding: 4px 0;
+    selection-background-color: transparent;
+    selection-color: #d4d4d8;
 }
 
-#vaultSidebarNav::item {
-    padding: 10px 14px;
-    border-radius: 8px;
+#vaultSidebarTree::item {
+    padding: 1px 4px;
+    border-radius: 3px;
+    background-color: transparent;
 }
 
-#vaultSidebarNav::item:hover {
+#vaultSidebarTree::item:hover {
+    background-color: #27272a;
+    color: #d4d4d8;
+}
+
+#vaultSidebarTree::item:selected {
+    background-color: transparent;
+    color: #d4d4d8;
+}
+
+#vaultSidebarTree::item:focus {
+    background-color: transparent;
+    color: #d4d4d8;
+}
+
+#vaultSidebarTree::branch {
+    background-color: transparent;
+    border: none;
+}
+
+#vaultSidebarTree::branch:selected {
+    background-color: transparent;
+}
+
+#vaultSidebarTree::branch:has-children:!has-siblings:closed,
+#vaultSidebarTree::branch:closed:has-children:has-siblings {
+    image: none;
+    border-image: none;
+}
+
+#vaultSidebarTree::branch:open:has-children:!has-siblings,
+#vaultSidebarTree::branch:open:has-children:has-siblings {
+    image: none;
+    border-image: none;
+}
+
+/* ── Sidebar add button ────────────────────────────────────── */
+
+#vaultSidebarAddButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 1px;
+}
+
+#vaultSidebarAddButton:hover {
+    background-color: #27272a;
+}
+
+#vaultSidebarAddButton:pressed {
     background-color: #3f3f46;
-    color: #fafafa;
 }
 
-#vaultSidebarNav::item:selected {
-    background-color: #4ade80;
-    color: #18181b;
-}
+/* ── Content area ──────────────────────────────────────────── */
 
 #vaultContent {
     background-color: #18181b;
 }
 
 #vaultContentToolbar {
-    background-color: #27272a;
-    border-bottom: 1px solid #3f3f46;
-    min-height: 48px;
-    max-height: 48px;
-    padding: 0 20px;
+    background-color: #1f1f23;
+    border-bottom: 1px solid #27272a;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0 12px;
 }
 
 #vaultContentStack[currentView="pages"] {
@@ -57,50 +107,32 @@
 #vaultContentOptionsButton {
     background-color: transparent;
     border: none;
-    border-radius: 8px;
-    color: #71717a;
-    font-size: 18px;
-    padding: 6px;
+    border-radius: 4px;
+    color: #52525b;
+    font-size: 14px;
+    padding: 4px;
 }
 
 #vaultContentOptionsButton:hover {
-    background-color: #3f3f46;
-    color: #fafafa;
+    background-color: #27272a;
+    color: #a1a1aa;
 }
 
 #vaultContentBackButton {
     background-color: transparent;
     border: none;
-    border-radius: 8px;
-    color: #71717a;
-    font-size: 14px;
-    padding: 6px;
+    border-radius: 4px;
+    color: #52525b;
+    font-size: 12px;
+    padding: 4px;
 }
 
 #vaultContentBackButton:hover {
-    color: #fafafa;
-    background-color: #3f3f46;
+    color: #a1a1aa;
+    background-color: #27272a;
 }
 
-#pagesNewPageButton {
-    background-color: #4ade80;
-    border: none;
-    border-radius: 8px;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 500;
-    min-width: 100px;
-    height: 36px;
-    padding: 0 18px;
-}
-
-#pagesNewPageButton:hover {
-    background-color: #22c55e;
-}
-
-#pagesNewPageButton:pressed {
-    background-color: #16a34a;
-}
+/* ── Content stacks / scroll ───────────────────────────────── */
 
 #vaultContentStack,
 #vaultContentScroll,
@@ -109,20 +141,23 @@
 }
 
 #vaultContentCards {
-    padding: 28px 32px;
+    padding: 20px 24px;
 }
 
+/* ── Context menus ─────────────────────────────────────────── */
+
 QMenu {
-    background-color: #27272a;
-    color: #fafafa;
-    border: 1px solid #3f3f46;
-    border-radius: 10px;
-    padding: 6px 0;
+    background-color: #1f1f23;
+    color: #d4d4d8;
+    border: 1px solid #27272a;
+    border-radius: 6px;
+    padding: 4px 0;
+    font-size: 12px;
 }
 
 QMenu::item {
-    padding: 8px 20px;
-    border-radius: 6px;
+    padding: 5px 16px;
+    border-radius: 3px;
 }
 
 QMenu::indicator {
@@ -135,10 +170,10 @@ QMenu::indicator {
 }
 
 QMenu::item:selected {
-    background-color: #3f3f46;
+    background-color: #27272a;
 }
 
 QMenu::item:checked {
-    background-color: #4ade80;
-    color: #18181b;
+    background-color: #3f3f46;
+    color: #fafafa;
 }

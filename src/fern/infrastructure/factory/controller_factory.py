@@ -2,7 +2,12 @@
 
 from pathlib import Path
 
-from fern.infrastructure.controller import AppController, RecentVaultsPort
+
+from fern.infrastructure.controller import (
+    AppController,
+    CreateRootPageOutput,
+    RecentVaultsPort,
+)
 
 
 class ControllerFactory:
@@ -20,9 +25,11 @@ class ControllerFactory:
     def _create_controller(self) -> AppController:
         """Wire and return a new AppController with default dependencies."""
         from fern.application.use_cases.open_vault import OpenVaultUseCase
-        from fern.interface_adapters.repositories import DATABASES_DIRNAME
         from fern.interface_adapters.repositories.filesystem_vault_repository import (
             FilesystemVaultRepository,
+        )
+        from fern.interface_adapters.repositories.vault_database_repository import (
+            DATABASE_MARKER,
         )
 
         from fern.infrastructure.pyside.recent_vaults import (
@@ -51,19 +58,45 @@ class ControllerFactory:
             if path.exists():
                 return None
             path.mkdir(parents=True)
-            (path / DATABASES_DIRNAME).mkdir(parents=True)
             return path
 
+        def _db_dir(vault_path: Path, database_name: str) -> Path:
+            """Resolve a database_name (relative path) to its absolute folder."""
+            return Path(vault_path) / database_name
+
         def save_page(
-            vault_path: Path, database_name: str, page_id: int, title: str, content: str
+            vault_path: Path,
+            database_name: str,
+            page_id: int,
+            title: str,
+            content: str,
+            properties: list | None = None,
         ) -> None:
+            from fern.domain.entities.properties import Property, PropertyType
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
 
-            pages_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            repo = MarkdownPageRepository(pages_dir)
-            repo.update(page_id, title, content)
+            repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
+            domain_props = None
+            if properties is not None:
+                domain_props = []
+                for p in properties:
+                    pid = getattr(p, "id", "")
+                    if pid in ("id", "title"):
+                        continue
+                    ptype = getattr(p, "type", "string")
+                    if isinstance(ptype, str):
+                        ptype = PropertyType.from_key(ptype)
+                    domain_props.append(
+                        Property(
+                            id=pid,
+                            name=getattr(p, "name", pid),
+                            type=ptype,
+                            value=getattr(p, "value", None),
+                        )
+                    )
+            repo.update(page_id, title, content, properties=domain_props)
 
         def create_page(
             vault_path: Path,
@@ -76,12 +109,46 @@ class ControllerFactory:
                 MarkdownPageRepository,
             )
 
-            pages_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            repo = MarkdownPageRepository(pages_dir)
+            repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = CreatePageUseCase(repo)
             return use_case.execute(
                 CreatePageUseCase.Input(title=title, content=content)
             )
+
+        def create_root_page(
+            vault_path: Path, title: str = "Untitled"
+        ) -> CreateRootPageOutput:
+            from fern.application.use_cases.create_page import CreatePageUseCase
+            from fern.interface_adapters.repositories.markdown_page_repository import (
+                MarkdownPageRepository,
+            )
+
+            repo = MarkdownPageRepository(Path(vault_path))
+            use_case = CreatePageUseCase(repo)
+            out = use_case.execute(CreatePageUseCase.Input(title=title, content=""))
+            path = Path(vault_path) / f"{out.title}.md"
+            return CreateRootPageOutput(
+                path=path,
+                page_id=out.page_id,
+                title=out.title,
+                content=out.content,
+            )
+
+        def create_database(vault_path: Path, folder_rel: str) -> bool:
+            """Create a database.json marker inside the given folder (relative to vault).
+
+            Returns True if created, False if it already exists.
+            """
+            import json
+
+            target = Path(vault_path) / folder_rel
+            marker = target / DATABASE_MARKER
+            if marker.exists():
+                return False
+            target.mkdir(parents=True, exist_ok=True)
+            data = {"properties": [], "propertyOrder": []}
+            marker.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            return True
 
         def delete_page(vault_path: Path, database_name: str, page_id: int):
             from fern.application.use_cases.delete_page import DeletePageUseCase
@@ -89,8 +156,7 @@ class ControllerFactory:
                 MarkdownPageRepository,
             )
 
-            pages_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            repo = MarkdownPageRepository(pages_dir)
+            repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = DeletePageUseCase(repo)
             return use_case.execute(DeletePageUseCase.Input(page_id=page_id))
 
@@ -102,6 +168,9 @@ class ControllerFactory:
             property_type: str,
         ):
             from fern.application.use_cases.add_property import AddPropertyUseCase
+            from fern.application.use_cases.apply_property_to_pages import (
+                ApplyPropertyToPagesUseCase,
+            )
             from fern.domain.entities import PropertyType
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
@@ -111,14 +180,53 @@ class ControllerFactory:
             )
 
             db_repo = VaultDatabaseRepository(vault_path)
-            page_repo = MarkdownPageRepository(
-                Path(vault_path) / DATABASES_DIRNAME / database_name
-            )
-            use_case = AddPropertyUseCase(db_repo, page_repo)
+            use_case = AddPropertyUseCase(db_repo)
             ptype = PropertyType.from_key(property_type)
-            return use_case.execute(
+            out = use_case.execute(
                 AddPropertyUseCase.Input(
                     database_name=database_name,
+                    property_id=property_id,
+                    name=name,
+                    type=ptype,
+                )
+            )
+            if not out.success:
+                return out
+
+            page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
+            apply_uc = ApplyPropertyToPagesUseCase(page_repo)
+            apply_uc.execute(
+                ApplyPropertyToPagesUseCase.Input(
+                    property_id=property_id,
+                    name=name,
+                    type=ptype,
+                )
+            )
+
+            return out
+
+        def add_page_property(
+            vault_path: Path,
+            database_name: str,
+            page_id: int,
+            property_id: str,
+            name: str,
+            property_type: str,
+        ):
+            from fern.application.use_cases.add_page_property import (
+                AddPagePropertyUseCase,
+            )
+            from fern.domain.entities import PropertyType
+            from fern.interface_adapters.repositories.markdown_page_repository import (
+                MarkdownPageRepository,
+            )
+
+            page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
+            use_case = AddPagePropertyUseCase(page_repo)
+            ptype = PropertyType.from_key(property_type)
+            return use_case.execute(
+                AddPagePropertyUseCase.Input(
+                    page_id=page_id,
                     property_id=property_id,
                     name=name,
                     type=ptype,
@@ -135,9 +243,7 @@ class ControllerFactory:
             )
 
             db_repo = VaultDatabaseRepository(vault_path)
-            page_repo = MarkdownPageRepository(
-                Path(vault_path) / DATABASES_DIRNAME / database_name
-            )
+            page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = RemovePropertyUseCase(db_repo, page_repo)
             return use_case.execute(
                 RemovePropertyUseCase.Input(
@@ -162,9 +268,7 @@ class ControllerFactory:
             )
 
             db_repo = VaultDatabaseRepository(vault_path)
-            page_repo = MarkdownPageRepository(
-                Path(vault_path) / DATABASES_DIRNAME / database_name
-            )
+            page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = UpdatePropertyUseCase(db_repo, page_repo)
             return use_case.execute(
                 UpdatePropertyUseCase.Input(
@@ -210,8 +314,7 @@ class ControllerFactory:
                 MarkdownPageRepository,
             )
 
-            db_dir = Path(vault_path) / DATABASES_DIRNAME / database_name
-            page_repo = MarkdownPageRepository(db_dir)
+            page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = UpdatePagePropertyUseCase(page_repo)
             return use_case.execute(
                 UpdatePagePropertyUseCase.Input(
@@ -221,14 +324,23 @@ class ControllerFactory:
                 )
             )
 
+        from fern.interface_adapters.repositories.vault_database_repository import (
+            is_database_folder,
+        )
+
         return AppController(
             recent_vaults=RecentVaultsAdapter(),
             open_vault=open_vault,
             create_vault=create_vault,
             save_page=save_page,
             create_page=create_page,
+            create_root_page=create_root_page,
+            create_database=create_database,
+            is_database_folder=is_database_folder,
+            database_marker_name=DATABASE_MARKER,
             delete_page=delete_page,
             add_property=add_property,
+            add_page_property=add_page_property,
             remove_property=remove_property,
             update_property=update_property,
             update_property_order=update_property_order,
