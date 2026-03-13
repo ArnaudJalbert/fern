@@ -10,18 +10,25 @@ callers can use::
 
 from .base import FernView
 from .database_view import DatabaseView
+from .database_window import DatabaseWindow
+from .databases_overview_window import DatabasesOverviewWindow
 from .editor_view import EditorView
 from .main_window import MainWindow
+from .page_data import PageData, PropertyData
 from .pages_view import PagesView
 from .vault_view import VaultView
 from .welcome_page import WelcomePage
 
 __all__ = [
     "DatabaseView",
+    "DatabaseWindow",
+    "DatabasesOverviewWindow",
     "EditorView",
     "FernView",
     "MainWindow",
+    "PageData",
     "PagesView",
+    "PropertyData",
     "VaultView",
     "WelcomePage",
 ]

@@ -81,13 +81,12 @@ wheels = [
 ]
 
 [[package]]
-name = "fern"
-version = "0.1.0"
+name = "fern-app"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "markdown" },
     { name = "pyside6" },
-    { name = "pytest-cov" },
     { name = "python-frontmatter" },
 ]
 
@@ -99,6 +98,7 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+    { name = "pytest-cov" },
 ]
 
 [package.metadata]
@@ -106,13 +106,15 @@ requires-dist = [
     { name = "markdown", specifier = ">=3.10" },
     { name = "pyside6", specifier = ">=6.6" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "python-frontmatter", specifier = ">=1.1.0" },
 ]
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.0" }]
+dev = [
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+]
 
 [[package]]
 name = "iniconfig"

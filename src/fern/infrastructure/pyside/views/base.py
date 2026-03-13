@@ -7,7 +7,6 @@ content and can connect to back_requested and options_clicked.
 """
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -53,13 +52,13 @@ class FernView(QWidget):
         self._toolbar = QFrame()
         self._toolbar.setObjectName("vaultContentToolbar")
         toolbar_layout = QHBoxLayout(self._toolbar)
-        toolbar_layout.setContentsMargins(24, 6, 24, 6)
-        toolbar_layout.setSpacing(8)
+        toolbar_layout.setContentsMargins(12, 4, 12, 4)
+        toolbar_layout.setSpacing(6)
         toolbar_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         self._back_btn = QPushButton("←")
         self._back_btn.setObjectName("vaultContentBackButton")
-        self._back_btn.setFixedSize(32, 32)
+        self._back_btn.setFixedSize(24, 24)
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._back_btn.clicked.connect(self.back_requested.emit)
         self._back_btn.setVisible(False)
@@ -69,8 +68,8 @@ class FernView(QWidget):
         options_icon = load_icon("options")
         self._options_btn = QPushButton(options_icon, "")
         self._options_btn.setObjectName("vaultContentOptionsButton")
-        self._options_btn.setFixedSize(32, 32)
-        self._options_btn.setIconSize(QSize(20, 20))
+        self._options_btn.setFixedSize(24, 24)
+        self._options_btn.setIconSize(QSize(14, 14))
         self._options_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._options_btn.clicked.connect(self.options_clicked.emit)
         toolbar_layout.addWidget(self._options_btn)
@@ -96,7 +95,7 @@ class FernView(QWidget):
         """Add a widget to the toolbar before the options icon (so the options icon stays rightmost)."""
         # Keep toolbar items aligned: same row height as back/options (32px)
         if hasattr(widget, "setFixedHeight"):
-            widget.setFixedHeight(32)
+            widget.setFixedHeight(24)
         policy = widget.sizePolicy()
         policy.setVerticalPolicy(QSizePolicy.Policy.Fixed)
         widget.setSizePolicy(policy)

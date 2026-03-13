@@ -1,4 +1,4 @@
-/* Table — clean grid */
+/* Table — minimal grid */
 
 #fernTable,
 #fernTableStack,
@@ -8,64 +8,63 @@
 }
 
 #fernTableView {
-    border-radius: 10px;
-    gridline-color: #3f3f46;
-    color: #fafafa;
-    font-size: 13px;
+    border-radius: 6px;
+    gridline-color: #27272a;
+    color: #d4d4d8;
+    font-size: 12px;
 }
 
 #fernTableView::item {
-    padding: 10px 12px;
+    padding: 6px 8px;
 }
 
-/* Inline editor: enough padding so text is not cut off */
+/* Inline editor */
 #fernTableView QLineEdit {
-    padding: 4px 6px;
+    padding: 3px 5px;
     min-height: 1.2em;
 }
 
 #fernTableView::item:alternate {
-    background-color: #27272a;
+    background-color: #1f1f23;
 }
 
 #fernTableView::item:selected,
 #fernTableView::item:alternate:selected {
-    background-color: #4ade80;
-    color: #18181b;
-}
-
-/* When a cell is being edited, no highlight — match normal row background */
-#fernTableView[editing="true"]::item:selected {
-    background-color: #18181b;
-    color: #fafafa;
-}
-#fernTableView[editing="true"]::item:alternate:selected {
     background-color: #27272a;
     color: #fafafa;
+}
+
+/* Editing state — suppress highlight */
+#fernTableView[editing="true"]::item:selected {
+    background-color: #18181b;
+    color: #d4d4d8;
+}
+#fernTableView[editing="true"]::item:alternate:selected {
+    background-color: #1f1f23;
+    color: #d4d4d8;
 }
 
 #fernTable QHeaderView::section {
-    background-color: #27272a;
-    color: #a1a1aa;
-    padding: 12px 14px;
+    background-color: #1f1f23;
+    color: #71717a;
+    padding: 6px 8px;
     border: none;
-    border-bottom: 1px solid #3f3f46;
+    border-bottom: 1px solid #27272a;
     border-radius: 0;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 }
 
 #fernTable QHeaderView::section:hover {
-    background-color: #3f3f46;
-    cursor: grab;
+    background-color: #27272a;
 }
 
 #fernTableLoading {
     background-color: #18181b;
-    border-radius: 10px;
+    border-radius: 6px;
 }
 
 #fernTableLoadingLabel {
-    color: #71717a;
-    font-size: 14px;
+    color: #52525b;
+    font-size: 12px;
 }

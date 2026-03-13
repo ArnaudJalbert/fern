@@ -10,14 +10,17 @@ chooses Delete, and add_property_requested for Add property.
 from collections.abc import Sequence
 from typing import Any, Protocol
 
-from PySide6.QtCore import QEvent, QModelIndex, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QModelIndex, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter, QPen
-from PySide6.QtWidgets import QApplication, QHeaderView, QMenu, QPushButton, QWidget
+from PySide6.QtWidgets import QApplication, QHeaderView, QMenu, QWidget
 
+from fern.infrastructure.pyside.actions import get_pages_view_actions
+from fern.infrastructure.pyside.utils import add_colored_action
 from fern.infrastructure.pyside.components import (
     CheckboxDelegate,
     Table,
     TextEditDelegate,
+    WrappingTextDelegate,
 )
 
 from .base import FernView
@@ -85,6 +88,7 @@ class PagesView(FernView):
         self._title = title
         self._schema: list[object] = []
         self._hidden_property_ids: set[str] = set()
+        self._wrapped_property_ids: set[str] = set()
         self._property_order: list[str] = []
         self._drag_from_visual: int | None = None
         self._drag_to_visual: int | None = None
@@ -96,7 +100,10 @@ class PagesView(FernView):
     # -- helpers --
 
     def _is_mandatory(self, prop: object) -> bool:
-        return getattr(prop, "mandatory", False) or getattr(prop, "type", "") in _MANDATORY_TYPES
+        return (
+            getattr(prop, "mandatory", False)
+            or getattr(prop, "type", "") in _MANDATORY_TYPES
+        )
 
     def _prop_id(self, prop: object) -> str:
         return getattr(prop, "id", "")
@@ -110,18 +117,15 @@ class PagesView(FernView):
     # -- build --
 
     def _build_content(self) -> None:
-        new_btn = QPushButton("New page")
-        new_btn.setObjectName("pagesNewPageButton")
-        new_btn.setMinimumWidth(96)
-        new_btn.clicked.connect(self.new_page_requested.emit)
-        self.add_toolbar_widget(new_btn)
         self._table = Table()
         table_view = self._table.view()
         table_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         table_view.customContextMenuRequested.connect(self._on_context_menu_requested)
         header = table_view.horizontalHeader()
         header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        header.customContextMenuRequested.connect(self._on_header_context_menu_requested)
+        header.customContextMenuRequested.connect(
+            self._on_header_context_menu_requested
+        )
 
         header.setSectionsMovable(False)
         header.viewport().setMouseTracking(True)
@@ -136,6 +140,7 @@ class PagesView(FernView):
         self._table.model().dataChanged.connect(self._on_table_data_changed)
         self._checkbox_delegate = CheckboxDelegate(self)
         self._text_edit_delegate = TextEditDelegate(self)
+        self._wrapping_delegate = WrappingTextDelegate(self)
         table_view.installEventFilter(self)
         self._header_viewport = header.viewport()
         self._header_viewport.installEventFilter(self)
@@ -147,14 +152,25 @@ class PagesView(FernView):
     def _on_options_clicked(self) -> None:
         menu = QMenu(self)
         menu.setObjectName("vaultContentOptionsMenu")
-        add_prop = menu.addAction("Add property")
-        add_prop.triggered.connect(self.add_property_requested.emit)
-        menu.addSeparator()
-        save_order = menu.addAction("Save column order")
-        save_order.triggered.connect(self.save_order_requested.emit)
+        callbacks = {
+            "new_page": self.new_page_requested.emit,
+            "add_property": self.add_property_requested.emit,
+            "save_order": self.save_order_requested.emit,
+        }
+        for item in get_pages_view_actions():
+            if item.is_separator:
+                menu.addSeparator()
+                continue
+            cb = callbacks.get(item.id)
+            if cb is None:
+                continue
+            if item.color:
+                add_colored_action(menu, item.label, item.color, cb)
+            else:
+                action = menu.addAction(item.label)
+                action.triggered.connect(cb)
         btn = self._options_btn
-        pos = btn.mapToGlobal(btn.rect().topLeft())
-        menu.exec(pos)
+        menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
     def _update_editing_state(self) -> None:
         view = self._table.view()
@@ -165,7 +181,10 @@ class PagesView(FernView):
         view.style().polish(view)
 
     def eventFilter(self, obj: object, event: QEvent) -> bool:
-        if obj is self._table.view() and event.type() in (QEvent.Type.FocusIn, QEvent.Type.FocusOut):
+        if obj is self._table.view() and event.type() in (
+            QEvent.Type.FocusIn,
+            QEvent.Type.FocusOut,
+        ):
             QTimer.singleShot(0, self._update_editing_state)
 
         if obj is self._header_viewport:
@@ -174,14 +193,22 @@ class PagesView(FernView):
 
             if etype == QEvent.Type.MouseButtonPress:
                 if event.button() == Qt.MouseButton.LeftButton:
-                    pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+                    pos = (
+                        event.position().toPoint()
+                        if hasattr(event, "position")
+                        else event.pos()
+                    )
                     section = header.logicalIndexAt(pos)
                     if section >= 0:
                         self._drag_from_visual = section
                         self._drag_to_visual = None
 
             elif etype == QEvent.Type.MouseMove and self._drag_from_visual is not None:
-                pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+                pos = (
+                    event.position().toPoint()
+                    if hasattr(event, "position")
+                    else event.pos()
+                )
                 target = self._drop_target_for_pos(header, pos)
                 if target is not None and target != self._drag_from_visual:
                     self._drag_to_visual = target
@@ -197,7 +224,9 @@ class PagesView(FernView):
                     and self._drag_to_visual is not None
                     and self._drag_from_visual != self._drag_to_visual
                 ):
-                    self._apply_column_move(self._drag_from_visual, self._drag_to_visual)
+                    self._apply_column_move(
+                        self._drag_from_visual, self._drag_to_visual
+                    )
                 self._drag_from_visual = None
                 self._drag_to_visual = None
 
@@ -237,7 +266,12 @@ class PagesView(FernView):
     def _apply_column_move(self, from_col: int, to_col: int) -> None:
         """Move a column in _property_order based on visible indices and refresh."""
         visible = self._visible_schema()
-        if from_col < 0 or from_col >= len(visible) or to_col < 0 or to_col >= len(visible):
+        if (
+            from_col < 0
+            or from_col >= len(visible)
+            or to_col < 0
+            or to_col >= len(visible)
+        ):
             return
         visible_ids = [self._prop_id(p) for p in visible]
         moved_id = visible_ids.pop(from_col)
@@ -271,7 +305,9 @@ class PagesView(FernView):
                     if pid not in self._property_order:
                         self._property_order.append(pid)
             else:
-                self._property_order = [i for i in self._property_order if i in schema_ids]
+                self._property_order = [
+                    i for i in self._property_order if i in schema_ids
+                ]
                 for p in self._schema:
                     pid = self._prop_id(p)
                     if pid not in self._property_order:
@@ -280,6 +316,13 @@ class PagesView(FernView):
 
     def get_pages(self) -> list[object]:
         return list(self._pages)
+
+    def get_selected_page(self) -> object | None:
+        """Return the page at the table's current row, or None if no selection."""
+        row = self._table.view().currentIndex().row()
+        if 0 <= row < len(self._pages):
+            return self._pages[row]
+        return None
 
     def get_schema(self) -> list[object]:
         return list(self._schema)
@@ -300,7 +343,8 @@ class PagesView(FernView):
     def _visible_schema(self) -> list[object]:
         """Schema with hidden properties filtered out, in display order."""
         visible_ids = [
-            self._prop_id(p) for p in self._schema
+            self._prop_id(p)
+            for p in self._schema
             if self._prop_id(p) not in self._hidden_property_ids
         ]
         order_set = set(self._property_order)
@@ -334,17 +378,27 @@ class PagesView(FernView):
             rows.append(row)
         self._table.set_data(headers, rows)
         readonly = {
-            col for col, prop in enumerate(visible)
+            col
+            for col, prop in enumerate(visible)
             if self._prop_type(prop) in _MANDATORY_TYPES
         }
         self._table.model().set_readonly_columns(readonly)
         table_view = self._table.view()
         for col, prop in enumerate(visible):
             ptype = self._prop_type(prop)
+            pid = self._prop_id(prop)
             if ptype == "boolean":
                 table_view.setItemDelegateForColumn(col, self._checkbox_delegate)
+            elif pid in self._wrapped_property_ids:
+                table_view.setItemDelegateForColumn(col, self._wrapping_delegate)
             else:
                 table_view.setItemDelegateForColumn(col, self._text_edit_delegate)
+        v_header = table_view.verticalHeader()
+        if self._wrapped_property_ids:
+            v_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        else:
+            v_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+            v_header.setDefaultSectionSize(40)
 
     # -- data changed --
 
@@ -397,8 +451,7 @@ class PagesView(FernView):
         add_action.triggered.connect(self.add_property_requested.emit)
 
         hidden = [
-            p for p in self._schema
-            if self._prop_id(p) in self._hidden_property_ids
+            p for p in self._schema if self._prop_id(p) in self._hidden_property_ids
         ]
         if hidden:
             show_sub = menu.addMenu("Show property")
@@ -414,25 +467,37 @@ class PagesView(FernView):
             prop = visible[section]
             pid = self._prop_id(prop)
             mandatory = self._is_mandatory(prop)
+            ptype = self._prop_type(prop)
 
             visible_ids = [self._prop_id(p) for p in visible]
             vis_idx = visible_ids.index(pid) if pid in visible_ids else -1
 
+            if ptype != "boolean":
+                wrap_action = menu.addAction("Wrap content")
+                wrap_action.setCheckable(True)
+                wrap_action.setChecked(pid in self._wrapped_property_ids)
+                wrap_action.triggered.connect(lambda: self._toggle_wrap_property(pid))
             menu.addSeparator()
             move_left = menu.addAction("Move left")
             move_left.triggered.connect(lambda: self._move_column(vis_idx, vis_idx - 1))
             move_left.setEnabled(vis_idx > 0)
             move_right = menu.addAction("Move right")
-            move_right.triggered.connect(lambda: self._move_column(vis_idx, vis_idx + 1))
+            move_right.triggered.connect(
+                lambda: self._move_column(vis_idx, vis_idx + 1)
+            )
             move_right.setEnabled(0 <= vis_idx < len(visible_ids) - 1)
 
             if not mandatory:
                 hide_action = menu.addAction("Hide property")
                 hide_action.triggered.connect(lambda: self._hide_property(pid))
                 edit_action = menu.addAction("Edit property...")
-                edit_action.triggered.connect(lambda: self.property_edit_requested.emit(prop))
+                edit_action.triggered.connect(
+                    lambda: self.property_edit_requested.emit(prop)
+                )
                 remove_action = menu.addAction("Remove property")
-                remove_action.triggered.connect(lambda: self.property_remove_requested.emit(pid))
+                remove_action.triggered.connect(
+                    lambda: self.property_remove_requested.emit(pid)
+                )
 
         menu.exec(header.mapToGlobal(pos))
 
@@ -446,12 +511,24 @@ class PagesView(FernView):
         self._hidden_property_ids.discard(property_id)
         self._fill_table()
 
+    def _toggle_wrap_property(self, property_id: str) -> None:
+        if property_id in self._wrapped_property_ids:
+            self._wrapped_property_ids.discard(property_id)
+        else:
+            self._wrapped_property_ids.add(property_id)
+        self._fill_table()
+
     # -- move --
 
     def _move_column(self, from_vis: int, to_vis: int) -> None:
         """Move a column from one visible index to another."""
         visible = self._visible_schema()
-        if from_vis < 0 or from_vis >= len(visible) or to_vis < 0 or to_vis >= len(visible):
+        if (
+            from_vis < 0
+            or from_vis >= len(visible)
+            or to_vis < 0
+            or to_vis >= len(visible)
+        ):
             return
         if from_vis == to_vis:
             return
@@ -474,6 +551,7 @@ class PagesView(FernView):
         menu = QMenu(self)
         add_action = menu.addAction("Add property")
         add_action.triggered.connect(self.add_property_requested.emit)
-        delete_action = menu.addAction("Delete")
-        delete_action.triggered.connect(lambda: self.page_delete_requested.emit(page))
+        add_colored_action(
+            menu, "Delete", "#dc2626", lambda: self.page_delete_requested.emit(page)
+        )
         menu.exec(table_view.viewport().mapToGlobal(pos))

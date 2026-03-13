@@ -1,6 +1,6 @@
 [project]
 name = "fern-app"
-version = "0.3.0"
+version = "0.4.0"
 description = "An open files and open source alternative to Notion and AppFlowy for tasks and pages viewing and management."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -8,14 +8,16 @@ dependencies = [
     "pyside6>=6.6",
     "python-frontmatter>=1.1.0",
     "markdown>=3.10",
-    "pytest-cov>=7.0.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=7.0.0",
+]
 
 [project.scripts]
 fern = "fern.__main__:main"

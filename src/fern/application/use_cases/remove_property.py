@@ -29,14 +29,16 @@ class RemovePropertyUseCase:
         self._page_repository = page_repository
 
     def execute(self, input_data: Input) -> Output:
-        properties, property_order = self._database_repository.get_schema(input_data.database_name)
-        new_properties = [
-            p for p in properties if p.id != input_data.property_id
-        ]
+        properties, property_order = self._database_repository.get_schema(
+            input_data.database_name
+        )
+        new_properties = [p for p in properties if p.id != input_data.property_id]
         if len(new_properties) == len(properties):
             return self.Output(success=False)
         new_order = [i for i in property_order if i != input_data.property_id]
-        self._database_repository.save_schema(input_data.database_name, new_properties, new_order)
+        self._database_repository.save_schema(
+            input_data.database_name, new_properties, new_order
+        )
         for page in self._page_repository.list_all():
             new_list = [p for p in page.properties if p.id != input_data.property_id]
             self._page_repository.update(

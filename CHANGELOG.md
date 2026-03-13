@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (Nothing yet.)
 
+## [0.4.0] - 2026-03-12
+
+### Added
+
+- **Save page with properties**: `save_page` (controller and factory) now accepts an optional `properties` argument; editor save and auto-save persist all page properties to markdown frontmatter so they are not lost on reload.
+- **Regression tests**: `tests_infrastructure/test_save_page_properties.py` — verifies that saving a page writes properties to disk and that the full add-property flow updates every page's frontmatter.
+
+### Changed
+
+- **Add property is synchronous**: Adding a property to a database schema now immediately applies it to every page's markdown file (frontmatter). The previous async QThread-based apply was removed; the synchronous apply is fast and reliable.
+- **Controller `add_property`**: No longer takes an `on_pages_updated` callback; callers refresh the UI after the call returns.
+- **Editor "Add property"**: Only shown when editing a database page (`in_database=True`); hidden for root-level markdown pages.
+
+### Fixed
+
+- **Add property not updating files**: New schema properties are now written to each page's frontmatter so the property appears in the UI and persists on disk.
+- **Add property not updating UI**: Views refresh and re-set the editor page after add property so the new property appears in the table and in the editor properties pane.
+- **Save overwriting properties**: Editor save (and `save_page`) now pass the current page's properties to the repository so frontmatter is preserved instead of being dropped.
+
 ## [0.3.0] - 2026-03-12
 
 ### Changed
@@ -69,7 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit/Add property dialog: capture name and type before dialog is destroyed to avoid deleted widget access.
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
-[Unreleased]: https://github.com/your-org/fern/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/your-org/fern/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/your-org/fern/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/your-org/fern/releases/tag/v0.3.0
 [0.2.0]: https://github.com/your-org/fern/releases/tag/v0.2.0
 [0.1.0]: https://github.com/your-org/fern/releases/tag/v0.1.0

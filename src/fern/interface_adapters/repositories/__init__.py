@@ -8,12 +8,12 @@ from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
 )
 from fern.interface_adapters.repositories.vault_database_repository import (
-    DATABASES_DIRNAME,
+    DATABASE_MARKER,
     VaultDatabaseRepository,
 )
 
 __all__ = [
-    "DATABASES_DIRNAME",
+    "DATABASE_MARKER",
     "FilesystemVaultRepository",
     "InMemoryPageRepository",
     "MarkdownPageRepository",

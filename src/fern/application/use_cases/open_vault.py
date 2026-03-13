@@ -60,9 +60,7 @@ class OpenVaultUseCase:
         vault = self._vault_repository.get()
         if vault is None:
             return self.Output(success=False)
-        databases = tuple(
-            self._database_to_output(db) for db in vault.databases
-        )
+        databases = tuple(self._database_to_output(db) for db in vault.databases)
         return self.Output(
             success=True,
             vault_name=vault.name,
@@ -84,7 +82,11 @@ class OpenVaultUseCase:
 
     def _database_to_output(self, db) -> DatabaseOutput:
         schema = self._ordered_schema(db.properties, db.property_order)
-        order = tuple(db.property_order) if db.property_order else tuple(p.id for p in db.properties)
+        order = (
+            tuple(db.property_order)
+            if db.property_order
+            else tuple(p.id for p in db.properties)
+        )
         return self.DatabaseOutput(
             name=db.name,
             pages=tuple(self._page_to_output(p, db.properties) for p in db.pages),
@@ -93,8 +95,12 @@ class OpenVaultUseCase:
         )
 
     def _page_to_output(self, page: Page, db_properties: list) -> PageOutput:
-        id_prop = self.PagePropertyOutput(id="id", name="ID", type="id", value=page.id, mandatory=True)
-        title_prop = self.PagePropertyOutput(id="title", name="Title", type="title", value=page.title, mandatory=True)
+        id_prop = self.PagePropertyOutput(
+            id="id", name="ID", type="id", value=page.id, mandatory=True
+        )
+        title_prop = self.PagePropertyOutput(
+            id="title", name="Title", type="title", value=page.title, mandatory=True
+        )
         user_props = tuple(
             self.PagePropertyOutput(
                 id=p.id, name=p.name, type=p.type.key(), value=p.value

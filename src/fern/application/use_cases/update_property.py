@@ -32,7 +32,9 @@ class UpdatePropertyUseCase:
         self._page_repository = page_repository
 
     def execute(self, input_data: Input) -> Output:
-        properties, property_order = self._database_repository.get_schema(input_data.database_name)
+        properties, property_order = self._database_repository.get_schema(
+            input_data.database_name
+        )
         idx = next(
             (i for i, p in enumerate(properties) if p.id == input_data.property_id),
             None,
@@ -51,17 +53,25 @@ class UpdatePropertyUseCase:
         updated = Property(id=old.id, name=new_name, type=new_type)
         new_props = [*properties]
         new_props[idx] = updated
-        self._database_repository.save_schema(input_data.database_name, new_props, list(property_order))
+        self._database_repository.save_schema(
+            input_data.database_name, new_props, list(property_order)
+        )
 
         for page in self._page_repository.list_all():
             new_list = []
             for p in page.properties:
                 if p.id == input_data.property_id:
                     raw = p.value
-                    value = new_type.value.coerce(raw) if hasattr(new_type.value, "coerce") else raw
+                    value = (
+                        new_type.value.coerce(raw)
+                        if hasattr(new_type.value, "coerce")
+                        else raw
+                    )
                     if value is None and hasattr(new_type.value, "default_value"):
                         value = new_type.value.default_value()
-                    new_list.append(Property(id=p.id, name=new_name, type=new_type, value=value))
+                    new_list.append(
+                        Property(id=p.id, name=new_name, type=new_type, value=value)
+                    )
                 else:
                     new_list.append(p)
             self._page_repository.update(
