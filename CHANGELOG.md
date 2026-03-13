@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- (Nothing yet.)
+
+## [0.3.0] - 2026-03-12
+
 ### Changed
 
+- **Renamed PyPI package** from `fern` to `fern-app` (imports remain `fern`).
 - **CI/CD**: Version and changelog check is now mandatory on merge requests (no longer allow_failure).
 
 ## [0.2.0] - 2026-03-12
@@ -64,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit/Add property dialog: capture name and type before dialog is destroyed to avoid deleted widget access.
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
-[Unreleased]: https://github.com/your-org/fern/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/your-org/fern/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/your-org/fern/releases/tag/v0.3.0
 [0.2.0]: https://github.com/your-org/fern/releases/tag/v0.2.0
 [0.1.0]: https://github.com/your-org/fern/releases/tag/v0.1.0
