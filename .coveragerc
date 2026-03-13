@@ -1,0 +1,6 @@
+[run]
+source = fern.application,fern.domain,fern.interface_adapters
+
+[report]
+fail_under = 100
+show_missing = True

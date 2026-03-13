@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMenu,
-    QMessageBox,
     QPushButton,
     QSizePolicy,
     QSplitter,
@@ -26,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from fern.infrastructure.controller import AppController
+from fern.infrastructure.pyside.components import alert, show_toast
 
 
 def _get_version() -> str:
@@ -135,14 +135,14 @@ class WelcomePage(QWidget):
 
         btn_open = QPushButton("Open folder as vault")
         btn_open.setObjectName("welcomePrimaryButton")
-        btn_open.setMinimumHeight(44)
+        btn_open.setMinimumHeight(36)
         btn_open.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_open.clicked.connect(self._on_open_vault)
         right_layout.addWidget(btn_open, 0, Qt.AlignmentFlag.AlignCenter)
 
         btn_create = QPushButton("Create new vault")
         btn_create.setObjectName("welcomeSecondaryButton")
-        btn_create.setMinimumHeight(44)
+        btn_create.setMinimumHeight(36)
         btn_create.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_create.clicked.connect(self._on_create_vault)
         right_layout.addWidget(btn_create, 0, Qt.AlignmentFlag.AlignCenter)
@@ -192,6 +192,7 @@ class WelcomePage(QWidget):
             self.open_vault_requested.emit(path)
         elif action is remove_action:
             self._controller.remove_recent_vault(path)
+            show_toast(self, "Removed from list")
             self.refresh_recent()
 
     def _on_recent_double_clicked(self, item: QListWidgetItem) -> None:
@@ -207,7 +208,7 @@ class WelcomePage(QWidget):
             return
         path = Path(path.strip().removeprefix("file://"))
         if not path.is_dir():
-            QMessageBox.warning(self, "Invalid folder", "Please select a valid folder.")
+            alert(self, "Invalid folder", "Please select a valid folder.")
             return
         self.open_vault_requested.emit(path)
 
@@ -220,12 +221,12 @@ class WelcomePage(QWidget):
             return
         path = Path(path.strip().removeprefix("file://"))
         if not path.is_dir():
-            QMessageBox.warning(self, "Invalid folder", "Please select a valid folder.")
+            alert(self, "Invalid folder", "Please select a valid folder.")
             return
         vault_name = "New Vault"
         vault_path = self._controller.create_vault(path, vault_name)
         if vault_path is None:
-            QMessageBox.warning(
+            alert(
                 self,
                 "Folder exists",
                 f'"{vault_name}" already exists in that location. Choose another folder or rename.',

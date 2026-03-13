@@ -1,0 +1,26 @@
+{
+  "properties": [
+    {
+      "id": "author",
+      "name": "Author",
+      "type": "string"
+    },
+    {
+      "id": "genre",
+      "name": "Genre",
+      "type": "string"
+    },
+    {
+      "id": "read",
+      "name": "Read",
+      "type": "boolean"
+    }
+  ],
+  "propertyOrder": [
+    "title",
+    "author",
+    "genre",
+    "read",
+    "id"
+  ]
+}

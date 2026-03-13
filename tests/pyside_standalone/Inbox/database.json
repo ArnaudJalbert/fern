@@ -1,0 +1,26 @@
+{
+  "properties": [
+    {
+      "id": "priority",
+      "name": "Priority",
+      "type": "string"
+    },
+    {
+      "id": "done",
+      "name": "Done",
+      "type": "boolean"
+    },
+    {
+      "id": "test",
+      "name": "Test",
+      "type": "boolean"
+    }
+  ],
+  "propertyOrder": [
+    "title",
+    "priority",
+    "done",
+    "id",
+    "test"
+  ]
+}

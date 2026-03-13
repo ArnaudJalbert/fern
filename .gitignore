@@ -24,4 +24,3 @@ build/
 
 # Tests
 .coverage
-.coveragerc

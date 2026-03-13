@@ -25,5 +25,7 @@ class UpdatePropertyOrderUseCase:
     def execute(self, input_data: Input) -> Output:
         properties, _ = self._database_repository.get_schema(input_data.database_name)
         new_order = list(input_data.property_order)
-        self._database_repository.save_schema(input_data.database_name, properties, new_order)
+        self._database_repository.save_schema(
+            input_data.database_name, properties, new_order
+        )
         return self.Output(success=True)

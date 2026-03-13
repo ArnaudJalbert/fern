@@ -4,6 +4,7 @@ Widget that stacks PropertyCards vertically (one card per row).
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from fern.infrastructure.pyside.components.property_card import PropertyCard
@@ -19,7 +20,8 @@ class PropertyCardsWidget(QWidget):
         self.setObjectName("propertyCardsWidget")
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._cards: list[PropertyCard] = []
 
     def add_card(self, card: PropertyCard) -> None:

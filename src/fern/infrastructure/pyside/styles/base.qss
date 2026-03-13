@@ -1,9 +1,10 @@
-/* App-wide base — modern dark theme */
+/* App-wide base — monochrome dark theme */
 
 QWidget {
     background-color: #18181b;
-    color: #fafafa;
+    color: #d4d4d8;
     font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+    font-size: 12px;
 }
 
 QMainWindow {

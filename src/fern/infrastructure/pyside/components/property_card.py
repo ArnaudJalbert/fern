@@ -30,6 +30,9 @@ class PropertyCard(QFrame):
         property_type: str = "string",
         value: Any = None,
         property_id: str = "",
+        *,
+        vertical: bool = False,
+        label_width: int | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -42,7 +45,8 @@ class PropertyCard(QFrame):
             property_type=property_type,
             value=value,
             property_id=property_id,
-            vertical=False,
+            vertical=vertical,
+            label_width=label_width,
             parent=self,
         )
         self._field.value_changed.connect(self.value_changed.emit)

@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtCore import Qt, QObject, QThread, Signal
+from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
     QHeaderView,
@@ -20,6 +21,8 @@ from PySide6.QtWidgets import (
 )
 
 from fern.infrastructure.pyside.components.table_model import TableModel
+
+_DEFAULT_COL_WIDTH = 150
 
 
 class _LoadWorker(QObject):
@@ -47,6 +50,29 @@ class _LoadWorker(QObject):
             self.error.emit(str(e))
 
 
+class _FrozenTableView(QTableView):
+    """QTableView that saves and restores column widths across resize events."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._saved_widths: list[int] = []
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        header = self.horizontalHeader()
+        count = header.count()
+        if count > 0:
+            widths = [header.sectionSize(i) for i in range(count)]
+        else:
+            widths = []
+
+        super().resizeEvent(event)
+
+        if widths:
+            for i, w in enumerate(widths):
+                if i < header.count():
+                    header.resizeSection(i, w)
+
+
 class Table(QFrame):
     """
     Reusable table with QAbstractTableModel. Styled via #fernTable.
@@ -71,15 +97,16 @@ class Table(QFrame):
         self._stack = QStackedWidget()
         self._stack.setObjectName("fernTableStack")
 
-        self._view = QTableView()
+        self._view = _FrozenTableView()
         self._view.setObjectName("fernTableView")
         self._view.setModel(self._model)
         self._view.setAlternatingRowColors(True)
         self._view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self._view.setSelectionMode(QTableView.SelectionMode.ExtendedSelection)
         header = self._view.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        header.setStretchLastSection(True)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        header.setStretchLastSection(False)
+        header.setDefaultSectionSize(_DEFAULT_COL_WIDTH)
         v_header = self._view.verticalHeader()
         v_header.setVisible(False)
         v_header.setDefaultSectionSize(40)
@@ -105,9 +132,16 @@ class Table(QFrame):
         """Return the QTableView for column sizing, selection, etc."""
         return self._view
 
+    def _enable_manual_resize(self) -> None:
+        """Allow the user to drag column edges while keeping Fixed mode as default."""
+        header = self._view.horizontalHeader()
+        for i in range(header.count()):
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
+
     def set_data(self, headers: list[str], rows: list[dict]) -> None:
         """Set table data synchronously. Must be called from the main thread only."""
         self._model.set_data(headers, rows)
+        self._enable_manual_resize()
         self._stack.setCurrentWidget(self._view)
 
     def load_async(
@@ -134,6 +168,7 @@ class Table(QFrame):
     def _on_loaded(self, headers: list[str], rows: list[dict]) -> None:
         """Handle successful async load: update model and show table."""
         self._model.set_data(headers, rows)
+        self._enable_manual_resize()
         self._stack.setCurrentWidget(self._view)
         self._thread = None
         self._worker = None
@@ -143,9 +178,9 @@ class Table(QFrame):
         self._stack.setCurrentWidget(self._view)
         self._thread = None
         self._worker = None
-        from PySide6.QtWidgets import QMessageBox
+        from fern.infrastructure.pyside.components import alert
 
-        QMessageBox.warning(self, "Load failed", message)
+        alert(self, "Load failed", message)
 
     def clear(self) -> None:
         """Clear the table."""
