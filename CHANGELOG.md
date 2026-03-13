@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **CI/CD**: Version and changelog check is now mandatory on merge requests (no longer allow_failure).
+
+## [0.2.0] - 2026-03-12
+
 ### Added
 
 - **Mandatory properties**: `id` and `title` are now first-class properties in the schema with dedicated `IdProperty` and `TitleProperty` types. They appear as sortable columns but cannot be hidden, removed, or edited.
@@ -18,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CI/CD**: Use `uv publish` instead of twine for publishing to PyPI and GitLab Package Registry. Fix GitLab create-release 422 by passing `ref` to the Releases API.
 - **Removed `ManifestRepository`**: All schema persistence now goes through `DatabaseRepository` with `get_schema()` and `save_schema()` methods. `JsonManifestRepository` has been deleted.
 - **Renamed `manifest.json` to `schema.json`**: Database schema files are now stored as `schema.json`.
 - **`PropertyType` enum**: Extended with `ID` and `TITLE` members; added `user_creatable()` to filter mandatory types from UI selection.
@@ -57,5 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit/Add property dialog: capture name and type before dialog is destroyed to avoid deleted widget access.
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
-[Unreleased]: https://github.com/your-org/fern/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/your-org/fern/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/your-org/fern/releases/tag/v0.2.0
 [0.1.0]: https://github.com/your-org/fern/releases/tag/v0.1.0

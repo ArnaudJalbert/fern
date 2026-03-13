@@ -18,7 +18,6 @@ stages:
 version-and-changelog:
   stage: check
   image: alpine:latest
-  allow_failure: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   before_script:
@@ -111,13 +110,10 @@ publish-package:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs:
     - build-package
-  variables:
-    TWINE_USERNAME: gitlab-ci-token
-    TWINE_PASSWORD: $CI_JOB_TOKEN
   before_script:
-    - pip install twine
+    - pip install uv
   script:
-    - twine upload --repository-url "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi" dist/*
+    - uv publish --no-attestations --publish-url "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi" --username gitlab-ci-token --password "${CI_JOB_TOKEN}"
 
 # Publish to PyPI (public). Set CI/CD variable PYPI_API_TOKEN in Settings > CI/CD > Variables.
 publish-pypi:
@@ -127,13 +123,10 @@ publish-pypi:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   needs:
     - build-package
-  variables:
-    TWINE_USERNAME: __token__
-    TWINE_PASSWORD: $PYPI_API_TOKEN
   before_script:
-    - pip install twine
+    - pip install uv
   script:
-    - twine upload dist/*
+    - uv publish --token "${PYPI_API_TOKEN}"
 
 create-release:
   stage: release
@@ -154,5 +147,5 @@ create-release:
       curl --fail --request POST \
         --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
         --header "Content-Type: application/json" \
-        --data "{\"tag_name\": \"${TAG_NAME}\", \"name\": \"${TAG_NAME}\", \"description\": \"Release ${VERSION}\"}" \
+        --data "{\"tag_name\": \"${TAG_NAME}\", \"ref\": \"${CI_COMMIT_SHA}\", \"name\": \"${TAG_NAME}\", \"description\": \"Release ${VERSION}\"}" \
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases"
