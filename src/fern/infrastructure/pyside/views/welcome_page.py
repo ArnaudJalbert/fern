@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from fern.infrastructure.controller import AppController
-from fern.infrastructure.pyside.components import alert, show_toast
+from fern.infrastructure.pyside.components import show_error, show_toast
 
 
 def _get_version() -> str:
@@ -208,7 +208,7 @@ class WelcomePage(QWidget):
             return
         path = Path(path.strip().removeprefix("file://"))
         if not path.is_dir():
-            alert(self, "Invalid folder", "Please select a valid folder.")
+            show_error(self, "Please select a valid folder.", title="Invalid folder")
             return
         self.open_vault_requested.emit(path)
 
@@ -221,15 +221,15 @@ class WelcomePage(QWidget):
             return
         path = Path(path.strip().removeprefix("file://"))
         if not path.is_dir():
-            alert(self, "Invalid folder", "Please select a valid folder.")
+            show_error(self, "Please select a valid folder.", title="Invalid folder")
             return
         vault_name = "New Vault"
         vault_path = self._controller.create_vault(path, vault_name)
         if vault_path is None:
-            alert(
+            show_error(
                 self,
-                "Folder exists",
                 f'"{vault_name}" already exists in that location. Choose another folder or rename.',
+                title="Folder exists",
             )
             return
         self.open_vault_requested.emit(vault_path)

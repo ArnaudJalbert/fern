@@ -8,9 +8,13 @@ properties:
 - id: platform
   name: Platform
   type: string
-  value: iOS + Android
+  value: ''
 - id: done
   name: Done
+  type: boolean
+  value: false
+- id: fast
+  name: fast
   type: boolean
   value: false
 ---

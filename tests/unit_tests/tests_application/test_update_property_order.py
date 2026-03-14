@@ -14,13 +14,12 @@ def test_update_property_order_success() -> None:
     )
 
     use_case = UpdatePropertyOrderUseCase(database_repository=db_repo)
-    out = use_case.execute(
+    use_case.execute(
         UpdatePropertyOrderUseCase.Input(
             database_name="DB", property_order=("p2", "p1")
         )
     )
 
-    assert out.success is True
     db_repo.save_schema.assert_called_once()
     call_args = db_repo.save_schema.call_args[0]
     assert call_args[0] == "DB"

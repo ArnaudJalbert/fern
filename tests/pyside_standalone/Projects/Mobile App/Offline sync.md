@@ -13,6 +13,10 @@ properties:
   name: Done
   type: boolean
   value: false
+- id: fast
+  name: fast
+  type: boolean
+  value: true
 ---
 
 # Offline sync

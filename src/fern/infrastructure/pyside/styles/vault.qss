@@ -104,32 +104,30 @@
     background-color: transparent;
 }
 
-#vaultContentOptionsButton {
-    background-color: transparent;
+/* Toolbar actions — integrated, no visible box; only subtle highlight on hover */
+#vaultContentOptionsButton,
+#vaultContentBackButton {
+    background: none;
     border: none;
-    border-radius: 4px;
-    color: #52525b;
-    font-size: 14px;
-    padding: 4px;
+    border-radius: 12px;
+    color: #71717a;
+    padding: 2px;
+    min-width: 20px;
+    min-height: 20px;
 }
 
-#vaultContentOptionsButton:hover {
+#vaultContentOptionsButton:hover,
+#vaultContentBackButton:hover {
     background-color: #27272a;
     color: #a1a1aa;
+}
+
+#vaultContentOptionsButton {
+    font-size: 14px;
 }
 
 #vaultContentBackButton {
-    background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    color: #52525b;
-    font-size: 12px;
-    padding: 4px;
-}
-
-#vaultContentBackButton:hover {
-    color: #a1a1aa;
-    background-color: #27272a;
+    font-size: 14px;
 }
 
 /* ── Content stacks / scroll ───────────────────────────────── */

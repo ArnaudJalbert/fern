@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QLabel,
     QLineEdit,
-    QMenu,
     QPlainTextEdit,
     QScrollArea,
     QSplitter,
@@ -21,14 +20,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fern.infrastructure.pyside.actions import get_editor_view_actions
+from fern.infrastructure.pyside.actions import EDITOR_VIEW_ACTIONS, build_options_menu
 from fern.infrastructure.pyside.components import (
     MarkdownHighlighter,
     PropertyCard,
     PropertyCardsWidget,
 )
 from fern.infrastructure.pyside.utils import (
-    add_colored_action,
     property_type_key,
     set_expanding,
 )
@@ -136,25 +134,12 @@ class EditorView(FernView):
         self.content_layout().addWidget(splitter)
 
     def _on_options_clicked(self) -> None:
-        menu = QMenu(self)
         callbacks = {
             "add_property": self.add_property_requested.emit,
             "delete": self.delete_requested.emit,
         }
-        for item in get_editor_view_actions():
-            if item.is_separator:
-                menu.addSeparator()
-                continue
-            if item.id == "add_property" and not self._in_database:
-                continue
-            cb = callbacks.get(item.id)
-            if cb is None:
-                continue
-            if item.color:
-                add_colored_action(menu, item.label, item.color, cb)
-            else:
-                action = menu.addAction(item.label)
-                action.triggered.connect(cb)
+        skip = {"add_property"} if not self._in_database else None
+        menu = build_options_menu(self, EDITOR_VIEW_ACTIONS, callbacks, skip_ids=skip)
         btn = self._options_btn
         menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
@@ -176,7 +161,7 @@ class EditorView(FernView):
                 self._page, card.get_property_id(), card.get_value()
             )
 
-    def _rebuild_properties(self, page, property_order=None) -> None:
+    def _rebuild_properties(self, page, property_order=None, schema=None) -> None:
         self._clear_properties()
         if self._property_cards_widget is None:
             return
@@ -191,12 +176,17 @@ class EditorView(FernView):
             ordered = [by_id[i] for i in order_ids if i in by_id]
             rest = [p for p in props if getattr(p, "id", "") not in order_ids]
             props = ordered + rest
+        schema_by_id = {getattr(p, "id", ""): p for p in (schema or [])}
         for prop in props:
             pid = getattr(prop, "id", "")
             name = getattr(prop, "name", pid)
-            ptype = getattr(prop, "type", "boolean")
+            property_type = getattr(prop, "type", "boolean")
             value = getattr(prop, "value", None)
-            type_key = property_type_key(ptype)
+            type_key = property_type_key(property_type)
+            choices = None
+            if type_key == "status":
+                schema_prop = schema_by_id.get(pid)
+                choices = list(getattr(schema_prop, "choices", None) or [])
             card = PropertyCard(
                 label=name.rstrip(":") + ":",
                 property_type=type_key,
@@ -204,6 +194,7 @@ class EditorView(FernView):
                 property_id=pid,
                 vertical=False,
                 label_width=90,
+                choices=choices,
                 parent=self._property_cards_widget,
             )
             card.value_changed.connect(
@@ -211,12 +202,21 @@ class EditorView(FernView):
             )
             self._property_cards_widget.add_card(card)
 
-    def set_page(self, page, property_order=None, *, in_database: bool = False) -> None:
+    def set_page(
+        self,
+        page,
+        property_order=None,
+        *,
+        schema=None,
+        in_database: bool = False,
+    ) -> None:
         self._save_timer.stop()
         self._page = page
         self._property_order = tuple(property_order) if property_order else None
+        self._schema = tuple(schema) if schema else ()
         self._in_database = in_database
         if page is None:
+            self._schema = ()
             self._title_edit.clear()
             self._clear_properties()
             self._content_edit.clear()
@@ -229,14 +229,20 @@ class EditorView(FernView):
         self._content_edit.setPlainText(content)
         self._title_edit.blockSignals(False)
         self._content_edit.blockSignals(False)
-        self._rebuild_properties(page, property_order=property_order)
+        self._rebuild_properties(
+            page, property_order=property_order, schema=self._schema
+        )
 
     def add_property_to_current_page(self, property_data: PropertyData) -> None:
         """Append a property to the current page and refresh the property cards."""
         if self._page is None or not hasattr(self._page, "properties"):
             return
         self._page.properties.append(property_data)
-        self._rebuild_properties(self._page, property_order=self._property_order)
+        self._rebuild_properties(
+            self._page,
+            property_order=self._property_order,
+            schema=getattr(self, "_schema", ()),
+        )
 
     def get_edited_page_data(self) -> tuple[int, str, str] | None:
         if self._page is None:

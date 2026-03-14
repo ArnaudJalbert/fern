@@ -1,7 +1,9 @@
 """Unit tests for OpenVaultUseCase."""
 
+import pytest
 from unittest.mock import MagicMock
 
+from fern.application.errors import VaultNotFoundError
 from fern.application.use_cases.open_vault import OpenVaultUseCase
 from fern.domain.entities import (
     Database,
@@ -31,7 +33,6 @@ def test_open_vault_success() -> None:
     use_case = OpenVaultUseCase(vault_repository=repo)
     out = use_case.execute(OpenVaultUseCase.Input())
 
-    assert out.success is True
     assert out.vault_name == "My Vault"
     assert len(out.databases) == 1
     assert out.databases[0].name == "Inbox"
@@ -45,11 +46,8 @@ def test_open_vault_failure_no_vault() -> None:
     repo.get.return_value = None
 
     use_case = OpenVaultUseCase(vault_repository=repo)
-    out = use_case.execute(OpenVaultUseCase.Input())
-
-    assert out.success is False
-    assert out.vault_name == ""
-    assert out.databases == ()
+    with pytest.raises(VaultNotFoundError):
+        use_case.execute(OpenVaultUseCase.Input())
 
 
 def test_open_vault_includes_schema_and_property_order() -> None:

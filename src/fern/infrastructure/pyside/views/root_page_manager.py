@@ -12,8 +12,7 @@ from pathlib import Path
 
 import frontmatter
 
-from fern.domain.entities import PropertyType
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import AppController, default_value_for_type
 
 from .page_data import PageData, PropertyData
 
@@ -32,7 +31,7 @@ def _properties_from_frontmatter(raw) -> list[PropertyData]:
         value = item.get("value")
         if value is None:
             try:
-                value = PropertyType.from_key(type_key).value.default_value()
+                value = default_value_for_type(type_key)
             except Exception:
                 value = None
         out.append(
@@ -44,8 +43,13 @@ def _properties_from_frontmatter(raw) -> list[PropertyData]:
 def _properties_to_frontmatter(properties: list[PropertyData]) -> list[dict]:
     """Serialize list[PropertyData] for frontmatter."""
     return [
-        {"id": p.id, "name": p.name, "type": p.type, "value": p.value}
-        for p in properties
+        {
+            "id": page_property.id,
+            "name": page_property.name,
+            "type": page_property.type,
+            "value": page_property.value,
+        }
+        for page_property in properties
     ]
 
 
@@ -149,7 +153,7 @@ class RootPageManager:
         for p in page.properties:
             if p.id == property_id:
                 return None
-        default = PropertyType.from_key(type_key).value.default_value()
+        default = default_value_for_type(type_key)
         new_prop = PropertyData(
             id=property_id, name=name, type=type_key, value=default, mandatory=False
         )

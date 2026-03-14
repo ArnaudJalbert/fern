@@ -7,7 +7,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from fern.infrastructure.pyside.components.property_card import PropertyCard
+from .property_card import PropertyCard
 
 
 class PropertyCardsWidget(QWidget):

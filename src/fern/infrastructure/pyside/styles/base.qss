@@ -10,3 +10,47 @@ QWidget {
 QMainWindow {
     background-color: #18181b;
 }
+
+/* Integrated scrollbars — thin, minimal, no arrow buttons */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 0;
+    border: none;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    background: #3f3f46;
+    border-radius: 4px;
+    min-height: 24px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #52525b;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+    border: none;
+    background: none;
+}
+QScrollBar:horizontal {
+    background: transparent;
+    height: 8px;
+    margin: 0;
+    border: none;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background: #3f3f46;
+    border-radius: 4px;
+    min-width: 24px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #52525b;
+}
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+    border: none;
+    background: none;
+}

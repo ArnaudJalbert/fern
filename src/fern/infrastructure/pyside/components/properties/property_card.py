@@ -12,7 +12,7 @@ from typing import Any
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QWidget
 
-from fern.infrastructure.pyside.components.property_field import PropertyField
+from .property_field import PropertyField
 
 
 class PropertyCard(QFrame):
@@ -33,6 +33,7 @@ class PropertyCard(QFrame):
         *,
         vertical: bool = False,
         label_width: int | None = None,
+        choices: list | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -49,6 +50,8 @@ class PropertyCard(QFrame):
             label_width=label_width,
             parent=self,
         )
+        if choices is not None and (property_type or "").strip().lower() == "status":
+            self._field.set_property(label, property_type, value, choices=choices)
         self._field.value_changed.connect(self.value_changed.emit)
         layout.addWidget(self._field)
 
@@ -64,5 +67,7 @@ class PropertyCard(QFrame):
     def set_property_id(self, property_id: str) -> None:
         self._field.set_property_id(property_id)
 
-    def set_property(self, label: str, property_type: str, value: Any) -> None:
-        self._field.set_property(label, property_type, value)
+    def set_property(
+        self, label: str, property_type: str, value: Any, **kwargs: Any
+    ) -> None:
+        self._field.set_property(label, property_type, value, **kwargs)

@@ -1,7 +1,9 @@
 """Unit tests for GetPageByIdUseCase."""
 
+import pytest
 from unittest.mock import MagicMock
 
+from fern.application.errors import PageNotFoundError
 from fern.application.use_cases.get_page_by_id import GetPageByIdUseCase
 from fern.domain.entities import Page
 
@@ -13,7 +15,6 @@ def test_get_page_by_id_found() -> None:
     use_case = GetPageByIdUseCase(page_repository=repo)
     out = use_case.execute(GetPageByIdUseCase.Input(page_id=1))
 
-    assert out.success is True
     assert out.id == 1
     assert out.title == "T"
     assert out.content == "C"
@@ -25,6 +26,5 @@ def test_get_page_by_id_not_found() -> None:
     repo.get_by_id.return_value = None
 
     use_case = GetPageByIdUseCase(page_repository=repo)
-    out = use_case.execute(GetPageByIdUseCase.Input(page_id=999))
-
-    assert out.success is False
+    with pytest.raises(PageNotFoundError):
+        use_case.execute(GetPageByIdUseCase.Input(page_id=999))

@@ -1,0 +1,41 @@
+site_name: Fern Documentation
+site_description: Architecture and developer guide for the Fern application
+repo_url: https://gitlab.com/arnaudjalbert/fern
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: teal
+    accent: teal
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Clean Architecture: architecture/clean-architecture.md
+  - PySide UI:
+      - Overview: pyside/overview.md
+      - Views: pyside/views.md
+      - Components: pyside/components.md
+      - Patterns: pyside/patterns.md
+      - Actions & Menus: pyside/actions.md

@@ -1,57 +1,70 @@
-"""
-Reusable PySide6 UI components.
+"""Reusable PySide6 UI components.
 
-Card and Table for data display; TableModel for table data; MarkdownHighlighter
-for syntax highlighting; PropertyField for label + typed editor; PropertyCard
-and PropertyCardsWidget for card-style property layout; CheckboxDelegate for boolean columns.
+Organized into sub-packages:
+
+- **dialogs/** — Confirmation, error, and property-edit dialogs
+- **properties/** — PropertyField, PropertyCard, PropertyCardsWidget, PropertySettingsWidget
+- **table/** — Table, TableModel, and cell delegates
+
+Plus standalone components: Card, MarkdownHighlighter, CommandPalette, Toast.
 """
 
 from fern.infrastructure.pyside.components.card import Card
-from fern.infrastructure.pyside.components.confirm_dialog import (
-    alert,
-    confirm,
-    ConfirmDialog,
-)
-from fern.infrastructure.pyside.components.toast import show_toast
-from fern.infrastructure.pyside.components.delegates import (
-    CheckboxDelegate,
-    TextEditDelegate,
-    WrappingTextDelegate,
-)
-from fern.infrastructure.pyside.components.markdown_highlighter import (
-    MarkdownHighlighter,
-)
-from fern.infrastructure.pyside.components.property_card import PropertyCard
-from fern.infrastructure.pyside.components.property_cards_widget import (
-    PropertyCardsWidget,
-)
-from fern.infrastructure.pyside.components.property_field import PropertyField
-from fern.infrastructure.pyside.components.property_settings_widget import (
-    PropertySettingsWidget,
-)
 from fern.infrastructure.pyside.components.command_palette import (
     CommandItem,
     CommandPalette,
 )
-from fern.infrastructure.pyside.components.table import Table
-from fern.infrastructure.pyside.components.table_model import TableModel
+from fern.infrastructure.pyside.components.dialogs import (
+    ConfirmDialog,
+    alert,
+    confirm,
+    run_boolean_property_editor,
+    run_simple_property_editor,
+    run_status_choices_editor,
+    run_string_property_editor,
+    show_error,
+)
+from fern.infrastructure.pyside.components.markdown_highlighter import (
+    MarkdownHighlighter,
+)
+from fern.infrastructure.pyside.components.properties import (
+    PropertyCard,
+    PropertyCardsWidget,
+    PropertyField,
+    PropertySettingsWidget,
+)
+from fern.infrastructure.pyside.components.table import (
+    CheckboxDelegate,
+    StatusComboDelegate,
+    Table,
+    TableModel,
+    TextEditDelegate,
+    WrappingTextDelegate,
+)
+from fern.infrastructure.pyside.components.toast import show_toast
 
 __all__ = [
-    "alert",
+    "Card",
+    "CheckboxDelegate",
     "CommandItem",
     "CommandPalette",
-    "Card",
-    "confirm",
     "ConfirmDialog",
-    "show_toast",
-    "CheckboxDelegate",
-    "TextEditDelegate",
-    "WrappingTextDelegate",
     "MarkdownHighlighter",
     "PropertyCard",
     "PropertyCardsWidget",
     "PropertyField",
     "PropertySettingsWidget",
+    "StatusComboDelegate",
     "Table",
     "TableModel",
+    "TextEditDelegate",
+    "WrappingTextDelegate",
+    "alert",
+    "confirm",
+    "run_boolean_property_editor",
+    "run_simple_property_editor",
+    "run_status_choices_editor",
+    "run_string_property_editor",
+    "show_error",
+    "show_toast",
 ]
