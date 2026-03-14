@@ -1,14 +1,20 @@
 """
-Single widget for property settings: name and type in one form.
+Widget for generic property settings: name and type only.
 
-Use in a dialog for Add property or Edit property. Exposes name and type key.
+Used only in the Add-property flow. Type-specific editing (e.g. status choices)
+is done in dedicated edit dialogs per type, not here.
 """
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QComboBox, QFormLayout, QLineEdit, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFormLayout,
+    QLineEdit,
+    QWidget,
+)
 
-TYPE_DISPLAY_TO_KEY = {"Boolean": "boolean", "String": "string"}
+TYPE_DISPLAY_TO_KEY = {"Boolean": "boolean", "String": "string", "Status": "status"}
 TYPE_OPTIONS = list(TYPE_DISPLAY_TO_KEY)
 
 
@@ -22,10 +28,8 @@ def type_key_to_display(key: str) -> str:
 
 class PropertySettingsWidget(QWidget):
     """
-    One widget with property name (line edit) and type (combo: Boolean / String).
-
-    Use get_name(), get_type_key() after the user confirms; set_name(), set_type_key()
-    to set initial values (e.g. when editing).
+    Name + type (Boolean / String / Status). No choices or type-specific fields.
+    Use get_name() and get_type_key() after confirm.
     """
 
     def __init__(

@@ -15,17 +15,23 @@ class UpdatePropertyOrderUseCase:
         database_name: str
         property_order: tuple[str, ...]
 
-    @dataclass(frozen=True)
-    class Output:
-        success: bool
-
     def __init__(self, database_repository: DatabaseRepository) -> None:
+        """Initialize the use case with the database repository.
+
+        Args:
+            database_repository: The repository for accessing and saving the schema.
+        """
         self._database_repository = database_repository
 
-    def execute(self, input_data: Input) -> Output:
+    def execute(self, input_data: Input) -> None:
+        """Persist the new property order for the database."""
+        # Load current schema and replace order
         properties, _ = self._database_repository.get_schema(input_data.database_name)
         new_order = list(input_data.property_order)
+
+        # Save schema with updated order
         self._database_repository.save_schema(
-            input_data.database_name, properties, new_order
+            input_data.database_name,
+            properties,
+            new_order,
         )
-        return self.Output(success=True)

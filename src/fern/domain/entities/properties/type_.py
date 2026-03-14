@@ -6,6 +6,7 @@ from enum import Enum
 
 from .boolean import BooleanProperty
 from .id_ import IdProperty
+from .status import StatusProperty
 from .string import StringProperty
 from .title import TitleProperty
 
@@ -17,6 +18,7 @@ class PropertyType(Enum):
     TITLE = TitleProperty
     BOOLEAN = BooleanProperty
     STRING = StringProperty
+    STATUS = StatusProperty
 
     def key(self) -> str:
         """Serialization key for this type (e.g. 'boolean')."""
@@ -34,4 +36,4 @@ class PropertyType(Enum):
     @classmethod
     def user_creatable(cls) -> list[PropertyType]:
         """Return property types that users can add (excludes mandatory types)."""
-        return [cls.BOOLEAN, cls.STRING]
+        return [cls.BOOLEAN, cls.STRING, cls.STATUS]

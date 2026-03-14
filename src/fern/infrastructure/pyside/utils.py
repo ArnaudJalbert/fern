@@ -62,12 +62,12 @@ def load_icon(name: str) -> QIcon:
     return QIcon()
 
 
-def property_type_key(ptype: Any) -> str:
+def property_type_key(property_type: Any) -> str:
     """Return the string type key for a property (e.g. 'boolean', 'string'). Handles enum or str."""
-    if isinstance(ptype, str):
-        return (ptype or "string").strip().lower()
-    if hasattr(ptype, "key") and callable(getattr(ptype, "key")):
-        return ptype.key()
+    if isinstance(property_type, str):
+        return (property_type or "string").strip().lower()
+    if hasattr(property_type, "key") and callable(getattr(property_type, "key")):
+        return property_type.key()
     return "string"
 
 

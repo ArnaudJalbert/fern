@@ -2,17 +2,17 @@
 id: 100
 properties:
 - id: priority
-  name: Priority
+  name: testy
   type: string
   value: High
 - id: done
   name: Done
   type: boolean
   value: false
-- id: test
-  name: Test
-  type: boolean
-  value: true
+- id: status
+  name: Status
+  type: status
+  value: In Progress
 ---
 
 # Buy groceries

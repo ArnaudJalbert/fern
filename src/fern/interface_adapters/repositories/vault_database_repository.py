@@ -9,7 +9,7 @@ import json
 import os
 from pathlib import Path
 
-from fern.domain.entities import Database, Property, PropertyType
+from fern.domain.entities import Choice, Database, Property, PropertyType
 from fern.domain.repositories.database_repository import DatabaseRepository
 from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
@@ -25,19 +25,47 @@ TITLE_PROPERTY = Property(
 
 def _property_from_dict(d: dict) -> Property:
     raw = d.get("type", "boolean")
-    ptype = PropertyType.from_key(raw)
-    return Property(id=str(d["id"]), name=str(d["name"]), type=ptype)
+    property_type = PropertyType.from_key(raw)
+    choices: list[Choice] | None = None
+    if property_type == PropertyType.STATUS:
+        raw_choices = d.get("choices")
+        if isinstance(raw_choices, list):
+            choices = [
+                Choice(
+                    name=str(c.get("name", "")),
+                    category=str(c.get("category", "")),
+                    color=str(c.get("color", "")),
+                )
+                for c in raw_choices
+                if isinstance(c, dict)
+            ]
+        if choices is None:
+            choices = []
+    return Property(
+        id=str(d["id"]),
+        name=str(d["name"]),
+        type=property_type,
+        choices=choices,
+    )
 
 
 def _property_to_dict(p: Property) -> dict:
-    return {"id": p.id, "name": p.name, "type": p.type.key()}
+    out: dict = {"id": p.id, "name": p.name, "type": p.type.key()}
+    if p.type == PropertyType.STATUS:
+        choices = getattr(p, "choices", None)
+        if choices:
+            out["choices"] = [
+                {"name": c.name, "category": c.category, "color": c.color}
+                for c in choices
+            ]
+    return out
 
 
 def ensure_mandatory_properties(
     properties: list[Property], property_order: list[str]
 ) -> tuple[list[Property], list[str]]:
     """Prepend id/title to properties and property_order if not already present."""
-    prop_ids = {p.id for p in properties}
+    prop_ids = {page_property.id for page_property in properties}
     full_props = list(properties)
     if "title" not in prop_ids:
         full_props.insert(0, TITLE_PROPERTY)
@@ -82,7 +110,11 @@ def _write_schema(
     dir_path = Path(db_dir).resolve()
     dir_path.mkdir(parents=True, exist_ok=True)
     file_path = dir_path / DATABASE_MARKER
-    user_props = [p for p in properties if not getattr(p, "mandatory", False)]
+    user_props = [
+        page_property
+        for page_property in properties
+        if not getattr(page_property, "mandatory", False)
+    ]
     data = {
         "properties": [_property_to_dict(p) for p in user_props],
         "propertyOrder": list(property_order),

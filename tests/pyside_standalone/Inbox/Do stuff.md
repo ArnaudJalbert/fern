@@ -1,18 +1,18 @@
 ---
 id: 103
 properties:
-- id: test
-  name: Test
-  type: boolean
-  value: false
 - id: priority
-  name: Priority
+  name: testy
   type: string
   value: High
 - id: done
   name: Done
   type: boolean
   value: false
+- id: status
+  name: Status
+  type: status
+  value: Not Started
 ---
 
 Just do stuff

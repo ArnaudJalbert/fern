@@ -2,10 +2,11 @@
 
 from unittest.mock import MagicMock
 
+from fern.application.dtos import ApplyPropertyToPagesInputDTO
 from fern.application.use_cases.apply_property_to_pages import (
     ApplyPropertyToPagesUseCase,
 )
-from fern.domain.entities import Page, PropertyType
+from fern.domain.entities import Page
 
 
 def test_apply_property_to_pages_updates_all() -> None:
@@ -16,8 +17,8 @@ def test_apply_property_to_pages_updates_all() -> None:
 
     use_case = ApplyPropertyToPagesUseCase(page_repository=page_repo)
     use_case.execute(
-        ApplyPropertyToPagesUseCase.Input(
-            property_id="status", name="Status", type=PropertyType.STRING
+        ApplyPropertyToPagesInputDTO(
+            property_id="status", name="Status", type_key="string"
         )
     )
 
@@ -37,9 +38,7 @@ def test_apply_property_to_pages_empty_list() -> None:
 
     use_case = ApplyPropertyToPagesUseCase(page_repository=page_repo)
     use_case.execute(
-        ApplyPropertyToPagesUseCase.Input(
-            property_id="x", name="X", type=PropertyType.BOOLEAN
-        )
+        ApplyPropertyToPagesInputDTO(property_id="x", name="X", type_key="boolean")
     )
 
     page_repo.update.assert_not_called()

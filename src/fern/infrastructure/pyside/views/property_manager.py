@@ -10,12 +10,20 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, QWidget
 
-from fern.domain.entities import PropertyType
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import (
+    AppController,
+    PageNotFoundError,
+    PropertyAlreadyExistsError,
+    PropertyAlreadyExistsOnPageError,
+    PropertyNotFoundError,
+    default_value_for_type,
+)
 from fern.infrastructure.pyside.components import (
     PropertySettingsWidget,
-    alert,
     confirm,
+    run_simple_property_editor,
+    run_status_choices_editor,
+    show_error,
     show_toast,
 )
 from fern.infrastructure.pyside.utils import property_type_key
@@ -33,12 +41,12 @@ class PropertyManager:
     # -- dialog ----------------------------------------------------------------
 
     @staticmethod
-    def run_settings_dialog(
+    def run_add_property_dialog(
         title: str,
         form: PropertySettingsWidget,
         parent: QWidget,
     ) -> tuple[str, str] | None:
-        """Show a modal property-settings dialog. Returns (name, type_key) or None."""
+        """Show the generic Add-property dialog (name + type only). Returns (name, type_key) or None."""
         dialog = QDialog(parent)
         dialog.setWindowTitle(title)
         layout = QVBoxLayout(dialog)
@@ -70,12 +78,21 @@ class PropertyManager:
         Returns True if the property was added successfully.
         """
         form = PropertySettingsWidget(name="Done", type_key="boolean", parent=parent)
-        parsed = self.run_settings_dialog("Add property", form, parent)
+        parsed = self.run_add_property_dialog("Add property", form, parent)
         if parsed is None:
             return False
         name, type_key = parsed
         if not name:
             return False
+        if type_key == "status":
+            status_result = run_status_choices_editor(
+                choices=[], parent=parent, name=name
+            )
+            if status_result is None:
+                return False
+            choices, name = status_result
+        else:
+            choices = None
         slug = (
             "".join(c if c.isalnum() or c == "_" else "_" for c in name.strip()).lower()
             or "prop"
@@ -83,15 +100,17 @@ class PropertyManager:
         slug = slug.strip("_") or "prop"
         if slug in ("id", "title"):
             slug = f"{slug}_prop"
-        out = self._controller.add_property(
-            self._vault_path,
-            database_name,
-            slug,
-            name,
-            type_key,
-        )
-        if not out.success:
-            alert(parent, "Add property", "A property with that id already exists.")
+        try:
+            self._controller.add_property(
+                self._vault_path,
+                database_name,
+                slug,
+                name,
+                type_key,
+                choices=choices if type_key == "status" else None,
+            )
+        except PropertyAlreadyExistsError as e:
+            show_error(parent, e.message, title="Add property")
             return False
         return True
 
@@ -100,7 +119,7 @@ class PropertyManager:
     ) -> PropertyData | None:
         """Add a property to a single page only. Returns the new PropertyData on success, else None."""
         form = PropertySettingsWidget(name="", type_key="string", parent=parent)
-        parsed = self.run_settings_dialog("Add property to this page", form, parent)
+        parsed = self.run_add_property_dialog("Add property to this page", form, parent)
         if parsed is None:
             return None
         name, type_key = parsed
@@ -113,23 +132,19 @@ class PropertyManager:
         slug = slug.strip("_") or "prop"
         if slug in ("id", "title"):
             slug = f"{slug}_prop"
-        out = self._controller.add_page_property(
-            self._vault_path,
-            database_name,
-            page_id,
-            slug,
-            name,
-            type_key,
-        )
-        if not out.success:
-            alert(
-                parent,
-                "Add property to page",
-                "A property with that id already exists on this page.",
+        try:
+            self._controller.add_page_property(
+                self._vault_path,
+                database_name,
+                page_id,
+                slug,
+                name,
+                type_key,
             )
+        except (PageNotFoundError, PropertyAlreadyExistsOnPageError) as e:
+            show_error(parent, e.message, title="Add property to page")
             return None
-        ptype = PropertyType.from_key(type_key)
-        default = ptype.value.default_value()
+        default = default_value_for_type(type_key)
         return PropertyData(
             id=slug, name=name, type=type_key, value=default, mandatory=False
         )
@@ -137,29 +152,48 @@ class PropertyManager:
     # -- edit ------------------------------------------------------------------
 
     def edit_property(self, database_name: str, prop, parent: QWidget) -> bool:
-        """Show the Edit-property dialog and persist. Returns True if updated."""
+        """Show the type-specific Edit-property dialog and persist. Returns True if updated."""
         property_id = getattr(prop, "id", "")
         current_name = getattr(prop, "name", property_id)
         type_key = property_type_key(getattr(prop, "type", "string"))
-        form = PropertySettingsWidget(
-            name=current_name, type_key=type_key, parent=parent
-        )
-        parsed = self.run_settings_dialog("Edit property", form, parent)
-        if parsed is None:
+
+        try:
+            if type_key == "status":
+                choices_attr = list(getattr(prop, "choices", None) or [])
+                result = run_status_choices_editor(
+                    choices=choices_attr, parent=parent, name=current_name
+                )
+                if result is None:
+                    return False
+                choices, name = result
+                self._controller.update_property(
+                    self._vault_path,
+                    database_name,
+                    property_id,
+                    new_name=name,
+                    new_type=None,
+                    new_choices=choices,
+                )
+            else:
+                name = run_simple_property_editor(
+                    type_key,
+                    name=current_name,
+                    parent=parent,
+                )
+                if name is None:
+                    return False
+                self._controller.update_property(
+                    self._vault_path,
+                    database_name,
+                    property_id,
+                    new_name=name,
+                    new_type=None,
+                    new_choices=None,
+                )
+            return True
+        except PropertyNotFoundError as e:
+            show_error(parent, e.message, title="Edit property")
             return False
-        name, new_type_key = parsed
-        name = name or current_name
-        out = self._controller.update_property(
-            self._vault_path,
-            database_name,
-            property_id,
-            new_name=name,
-            new_type=new_type_key,
-        )
-        if not out.success:
-            alert(parent, "Edit property", "Could not update the property.")
-            return False
-        return True
 
     # -- remove ----------------------------------------------------------------
 
@@ -176,11 +210,12 @@ class PropertyManager:
             cancel_label="Cancel",
         ):
             return False
-        out = self._controller.remove_property(
-            self._vault_path, database_name, property_id
-        )
-        if not out.success:
-            alert(parent, "Remove property", "Could not remove the property.")
+        try:
+            self._controller.remove_property(
+                self._vault_path, database_name, property_id
+            )
+        except PropertyNotFoundError as e:
+            show_error(parent, e.message, title="Remove property")
             return False
         return True
 
@@ -192,14 +227,9 @@ class PropertyManager:
         """Persist column order. Returns True on success."""
         vault_path = Path(self._vault_path).resolve()
         try:
-            out = self._controller.update_property_order(
-                vault_path, database_name, order
-            )
+            self._controller.update_property_order(vault_path, database_name, order)
         except Exception as e:
-            alert(parent, "Save column order", f"Save failed: {e!s}")
-            return False
-        if not out.success:
-            alert(parent, "Save column order", "Save failed (success=False).")
+            show_error(parent, str(e), title="Save column order")
             return False
         show_toast(parent, "Column order saved")
         return True
