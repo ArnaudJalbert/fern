@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (Nothing yet.)
 
+## [0.5.0] - 2026-03-14
+
+### Added
+
+- **Status property type**: New `StatusProperty` with named choices, categories, and colors. Status columns render as colored combo dropdowns in the pages table.
+- **Status choices editor**: Dialog for managing status choices (name, category, color) with an inline color picker.
+- **Command palette**: Cmd+P fuzzy search across all available actions.
+- **Toast notifications**: Non-intrusive bottom-right toasts with countdown bar.
+- **DatabaseViewCoordinator**: Shared page/property CRUD logic extracted from three host views, eliminating ~500 lines of duplication.
+- **MkDocs documentation**: Architecture and PySide developer guide with Material theme, mermaid diagrams, hosted on GitLab Pages.
+- **GitLab Pages CI job**: Automatically builds and deploys docs on merge to main.
+- **Ruff linting in CI**: `ruff check` and `ruff format --check` run on merge requests.
+
+### Changed
+
+- **Unified action system**: Collapsed three identical action item dataclasses into a single `ActionItem`; added `build_options_menu()` utility to eliminate repetitive menu-building loops.
+- **Merged property edit dialogs**: `BooleanPropertyEditDialog` and `StringPropertyEditDialog` replaced by a single `SimplePropertyEditDialog` parameterized by type key.
+- **Components reorganized**: `components/` split into sub-packages — `dialogs/`, `properties/`, `table/` — for better discoverability.
+- **Clean layer boundaries**: PySide UI no longer imports from `fern.application` or `fern.domain`. Output types, errors, and helpers are re-exported through `fern.infrastructure.controller`.
+- **Integrated scrollbars and toolbar buttons**: Minimal, transparent styling for scrollbars; borderless toolbar buttons with subtle hover highlights.
+- **Table interaction**: Status dropdowns open immediately on double-click; checkboxes toggle only on double-click; single click highlights the row.
+- **Error handling**: Application errors include detailed messages; generic `show_error()` dialog used consistently across all views.
+
+### Fixed
+
+- **Error display**: All views now use `show_error()` for consistent error presentation instead of ad-hoc alert dialogs.
+- **Editor property visibility**: "Add property" option hidden in editor when not in a database context.
+
 ## [0.4.0] - 2026-03-12
 
 ### Added
@@ -88,8 +116,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit/Add property dialog: capture name and type before dialog is destroyed to avoid deleted widget access.
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
-[Unreleased]: https://github.com/your-org/fern/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/your-org/fern/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/your-org/fern/releases/tag/v0.3.0
-[0.2.0]: https://github.com/your-org/fern/releases/tag/v0.2.0
-[0.1.0]: https://github.com/your-org/fern/releases/tag/v0.1.0
+[Unreleased]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.5.0...HEAD
+[0.5.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.4.0...v0.5.0
+[0.4.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.3.0...v0.4.0
+[0.3.0]: https://gitlab.com/arnaudjalbert/fern/-/tags/v0.3.0
+[0.2.0]: https://gitlab.com/arnaudjalbert/fern/-/tags/v0.2.0
+[0.1.0]: https://gitlab.com/arnaudjalbert/fern/-/tags/v0.1.0

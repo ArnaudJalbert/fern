@@ -12,7 +12,7 @@ properties:
 - id: done
   name: Done
   type: boolean
-  value: true
+  value: false
 ---
 
 # Update color palette

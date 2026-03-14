@@ -6,11 +6,14 @@ Keeps all the controller calls and page-list bookkeeping out of VaultView.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from fern.application.use_cases.open_vault import OpenVaultUseCase
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import AppController, VaultOutput
 
 from .page_data import PageData, PropertyData
+
+if TYPE_CHECKING:
+    from PySide6.QtWidgets import QWidget
 
 
 class DatabasePageManager:
@@ -21,6 +24,7 @@ class DatabasePageManager:
         self._vault_path = vault_path
         self.current_database_name: str = ""
         self.current_property_order: tuple[str, ...] = ()
+        self.current_schema: tuple = ()
 
     # -- helpers ---------------------------------------------------------------
 
@@ -29,7 +33,7 @@ class DatabasePageManager:
         """Convert a DatabaseOutput's pages to a list of PageData."""
         return [PageData.from_use_case_page(p) for p in getattr(db, "pages", ())]
 
-    def find_database(self, output: OpenVaultUseCase.Output, name: str):
+    def find_database(self, output: VaultOutput, name: str):
         """Return the DatabaseOutput with the given name, or None."""
         for d in output.databases:
             if getattr(d, "name", "") == name:
@@ -52,8 +56,9 @@ class DatabasePageManager:
             return None
         self.current_database_name = name
         self.current_property_order = getattr(db, "property_order", ()) or ()
+        self.current_schema = getattr(db, "schema", ()) or ()
         pages = self.pages_from_output(db)
-        return pages, getattr(db, "schema", ()), self.current_property_order
+        return pages, self.current_schema, self.current_property_order
 
     # -- save ------------------------------------------------------------------
 
@@ -106,12 +111,17 @@ class DatabasePageManager:
             pid = getattr(prop, "id", "")
             if pid in ("id", "title"):
                 continue
-            ptype = getattr(prop, "type", "string")
-            default = False if ptype == "boolean" else None
+            property_type = getattr(prop, "type", "string")
+            if property_type == "boolean":
+                default = False
+            elif property_type == "status":
+                default = ""
+            else:
+                default = None
             by_id[pid] = PropertyData(
                 id=pid,
                 name=getattr(prop, "name", pid),
-                type=ptype,
+                type=property_type,
                 value=default,
                 mandatory=False,
             )
@@ -129,44 +139,73 @@ class DatabasePageManager:
 
     # -- delete ----------------------------------------------------------------
 
-    def delete_page(self, page_id: int) -> bool:
-        """Delete a page and return True if deleted."""
+    def delete_page(self, page_id: int, parent: QWidget | None = None) -> bool:
+        """Delete a page and return True if deleted. Shows error dialog if parent given."""
         if not self.current_database_name:
             return False
-        out = self._controller.delete_page(
-            self._vault_path,
-            self.current_database_name,
-            page_id,
-        )
-        return out.deleted
+        try:
+            self._controller.delete_page(
+                self._vault_path,
+                self.current_database_name,
+                page_id,
+            )
+            return True
+        except Exception as e:
+            if parent is not None:
+                from fern.infrastructure.pyside.components import show_error
+
+                show_error(parent, str(e), title="Delete page")
+            return False
 
     # -- refresh ---------------------------------------------------------------
 
     def refresh_pages_and_schema(
         self,
+        parent: QWidget | None = None,
     ) -> tuple[list[PageData], object, tuple[str, ...]] | None:
         """Reload the vault and return fresh (pages, schema, property_order) for the current DB."""
         if not self.current_database_name:
             return None
-        fresh = self._controller.open_vault_refresh(self._vault_path)
+        try:
+            fresh = self._controller.open_vault_refresh(self._vault_path)
+        except Exception as e:
+            if parent is not None:
+                from fern.infrastructure.pyside.components import show_error
+
+                show_error(parent, str(e))
+            return None
         db = self.find_database(fresh, self.current_database_name)
         if db is None:
             return None
         self.current_property_order = getattr(db, "property_order", ()) or ()
+        self.current_schema = getattr(db, "schema", ()) or ()
         pages = self.pages_from_output(db)
-        return pages, getattr(db, "schema", ()), self.current_property_order
+        return pages, self.current_schema, self.current_property_order
 
     # -- property value --------------------------------------------------------
 
-    def update_page_property(self, page_id: int, property_id: str, value) -> bool:
-        """Persist a single property value change. Returns True on success."""
+    def update_page_property(
+        self,
+        page_id: int,
+        property_id: str,
+        value,
+        parent: QWidget | None = None,
+    ) -> bool:
+        """Persist a single property value change. Returns True on success. Shows error if parent given."""
         if not self.current_database_name:
             return False
-        out = self._controller.update_page_property(
-            self._vault_path,
-            self.current_database_name,
-            page_id,
-            property_id,
-            value,
-        )
-        return out.success
+        try:
+            self._controller.update_page_property(
+                self._vault_path,
+                self.current_database_name,
+                page_id,
+                property_id,
+                value,
+            )
+            return True
+        except Exception as e:
+            if parent is not None:
+                from fern.infrastructure.pyside.components import show_error
+
+                show_error(parent, str(e), title="Update property")
+            return False

@@ -27,10 +27,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fern.application.use_cases.open_vault import OpenVaultUseCase
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import AppController, VaultOutput
 
 from .database_page_manager import DatabasePageManager
+from .database_view_coordinator import DatabaseViewCoordinator
 from .database_window import DatabaseWindow
 from .editor_view import EditorView
 from .page_data import PageData
@@ -39,7 +39,7 @@ from .property_manager import PropertyManager
 from .root_page_manager import RootPageManager
 from .vault_tree_model import FILE_PATH_ROLE, IS_DATABASE_ROLE, VaultTreeModel
 from fern.infrastructure.pyside.actions import get_tree_actions
-from fern.infrastructure.pyside.components import alert, confirm, show_toast
+from fern.infrastructure.pyside.components import confirm, show_error, show_toast
 from fern.infrastructure.pyside.utils import (
     add_colored_action,
     load_icon,
@@ -67,7 +67,7 @@ class VaultView(QWidget):
         self,
         controller: AppController,
         vault_path: Path,
-        vault_output: OpenVaultUseCase.Output,
+        vault_output: VaultOutput,
     ) -> None:
         super().__init__()
         self.setObjectName("vaultView")
@@ -82,6 +82,16 @@ class VaultView(QWidget):
         self._current_root_page: PageData | None = None
 
         self._build_ui()
+
+        self._coordinator = DatabaseViewCoordinator(
+            database_page_manager=self._db_mgr,
+            property_manager=self._prop_mgr,
+            pages_view=self._pages_view,
+            editor_view=self._editor_view,
+            stack=self._view_stack,
+            host=self,
+        )
+        self._wire_coordinator_signals()
 
     # ── UI construction ──────────────────────────────────────────────────────
 
@@ -172,23 +182,12 @@ class VaultView(QWidget):
 
         self._pages_view = PagesView()
         self._pages_view.back_requested.connect(self._on_pages_back)
-        self._pages_view.page_activated.connect(self._on_page_activated)
-        self._pages_view.new_page_requested.connect(self._on_new_db_page)
-        self._pages_view.page_delete_requested.connect(
-            self._on_db_page_delete_from_table
-        )
-        self._pages_view.add_property_requested.connect(self._on_add_property)
-        self._pages_view.property_value_changed.connect(self._on_property_value_changed)
-        self._pages_view.property_edit_requested.connect(self._on_edit_property)
-        self._pages_view.property_remove_requested.connect(self._on_remove_property)
-        self._pages_view.save_order_requested.connect(self._on_save_order)
         self._view_stack.addWidget(self._pages_view)
 
         self._editor_view = EditorView()
         self._editor_view.back_requested.connect(self._on_editor_back)
         self._editor_view.save_requested.connect(self._on_editor_save)
         self._editor_view.delete_requested.connect(self._on_editor_delete)
-        self._editor_view.add_property_requested.connect(self._on_add_property)
         self._editor_view.property_value_changed.connect(
             self._on_property_value_changed
         )
@@ -200,6 +199,32 @@ class VaultView(QWidget):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.addWidget(self._view_stack, 1)
         return content
+
+    def _wire_coordinator_signals(self) -> None:
+        """Wire PagesView signals that go straight to the coordinator.
+
+        EditorView signals are connected in _build_content_stack to VaultView
+        overrides that handle root-page branching before delegating to the
+        coordinator for database operations.
+        """
+        self._pages_view.page_activated.connect(self._coordinator.on_page_activated)
+        self._pages_view.new_page_requested.connect(self._coordinator.on_new_page)
+        self._pages_view.page_delete_requested.connect(
+            self._coordinator.on_page_delete_from_table
+        )
+        self._pages_view.add_property_requested.connect(
+            self._coordinator.on_add_property
+        )
+        self._pages_view.property_edit_requested.connect(
+            self._coordinator.on_edit_property
+        )
+        self._pages_view.property_remove_requested.connect(
+            self._coordinator.on_remove_property
+        )
+        self._pages_view.save_order_requested.connect(self._coordinator.on_save_order)
+        self._editor_view.add_property_requested.connect(
+            self._coordinator.on_add_property
+        )
 
     # ── Tree sidebar ─────────────────────────────────────────────────────────
 
@@ -378,7 +403,7 @@ class VaultView(QWidget):
         target_rel = f"{rel}/{name.strip()}" if rel else name.strip()
         created = self._controller.create_database(self._vault_path, target_rel)
         if not created:
-            alert(self, "New database", "A database already exists there.")
+            show_error(self, "A database already exists there.", title="New database")
             return
         show_toast(self, "Database created")
         fresh = self._controller.open_vault_refresh(self._vault_path)
@@ -395,7 +420,7 @@ class VaultView(QWidget):
         safe_name = name.strip().replace("/", "-")
         target = folder / f"{safe_name}.md"
         if target.exists():
-            alert(self, "New page", f'"{safe_name}.md" already exists.')
+            show_error(self, f'"{safe_name}.md" already exists.', title="New page")
             return
 
         import frontmatter
@@ -415,7 +440,7 @@ class VaultView(QWidget):
 
         target = parent / name.strip()
         if target.exists():
-            alert(self, "New folder", f'"{name.strip()}" already exists.')
+            show_error(self, f'"{name.strip()}" already exists.', title="New folder")
             return
         target.mkdir(parents=True, exist_ok=True)
         show_toast(self, "Folder created")
@@ -488,13 +513,7 @@ class VaultView(QWidget):
     def _on_pages_back(self) -> None:
         self._view_stack.setCurrentWidget(self._empty_view)
 
-    def _on_page_activated(self, page) -> None:
-        self._editor_view.set_page(
-            page, property_order=self._db_mgr.current_property_order, in_database=True
-        )
-        self._view_stack.setCurrentWidget(self._editor_view)
-
-    # ── Editor: back / save / delete ─────────────────────────────────────────
+    # ── Editor: back / save / delete (root page overrides + coordinator) ─────
 
     def _on_editor_back(self) -> None:
         self._on_editor_save()
@@ -503,15 +522,14 @@ class VaultView(QWidget):
             self._editor_view.set_page(None)
             self._view_stack.setCurrentWidget(self._empty_view)
         else:
-            self._view_stack.setCurrentWidget(self._pages_view)
+            self._coordinator.on_editor_back()
 
     def _on_editor_save(self) -> None:
-        data = self._editor_view.get_edited_page_data()
-        if data is None:
-            return
-        page_id, title, content = data
-
         if self._current_root_page is not None:
+            data = self._editor_view.get_edited_page_data()
+            if data is None:
+                return
+            _, title, content = data
             try:
                 updated = self._root_mgr.save(self._current_root_page, title, content)
                 self._current_root_page = updated
@@ -520,22 +538,7 @@ class VaultView(QWidget):
             except OSError:
                 pass
             return
-
-        if not self._db_mgr.current_database_name:
-            return
-        page_props = getattr(self._editor_view._page, "properties", None)
-        self._db_mgr.save_page(page_id, title, content, properties=page_props)
-        current = self._pages_view.get_pages()
-        updated_pages = []
-        for p in current:
-            if getattr(p, "id", 0) == page_id:
-                p = PageData.from_use_case_page(p)
-                p.title = title
-                p.content = content
-                p.update_mandatory_props(page_id, title)
-            updated_pages.append(p)
-        self._pages_view.set_pages(updated_pages)
-        show_toast(self, "Saved")
+        self._coordinator.on_editor_save()
 
     def _on_editor_delete(self) -> None:
         if self._current_root_page is not None and self._current_root_page.path:
@@ -554,137 +557,17 @@ class VaultView(QWidget):
             self._editor_view.set_page(None)
             self._view_stack.setCurrentWidget(self._empty_view)
             return
+        self._coordinator.on_editor_delete()
 
-        data = self._editor_view.get_edited_page_data()
-        if data is None or not self._db_mgr.current_database_name:
-            return
-        self._delete_db_page(data[0], data[1], clear_editor=True)
-
-    # ── Database page delete (shared by editor and table) ────────────────────
-
-    def _on_db_page_delete_from_table(self, page) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        self._delete_db_page(
-            getattr(page, "id", None),
-            getattr(page, "title", "this page"),
-            clear_editor=False,
-        )
-
-    def _delete_db_page(self, page_id: int, title: str, *, clear_editor: bool) -> None:
-        if not confirm(
-            self,
-            "Delete page",
-            f'Delete page "{title}"? This cannot be undone.',
-            destructive=True,
-            confirm_label="Delete",
-            cancel_label="Cancel",
-        ):
-            return
-        if not self._db_mgr.delete_page(page_id):
-            return
-        show_toast(self, "Page deleted")
-        current = self._pages_view.get_pages()
-        self._pages_view.set_pages(
-            [p for p in current if getattr(p, "id", None) != page_id]
-        )
-        if clear_editor:
-            self._editor_view.set_page(None)
-            self._view_stack.setCurrentWidget(self._pages_view)
-
-    # ── New database page ────────────────────────────────────────────────────
-
-    def _on_new_db_page(self) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        new_page = self._db_mgr.create_page(schema=self._pages_view.get_schema())
-        current = self._pages_view.get_pages()
-        self._pages_view.set_pages([*current, new_page])
-        show_toast(self, "Page created")
-        self._editor_view.set_page(
-            new_page,
-            property_order=self._db_mgr.current_property_order,
-            in_database=True,
-        )
-        self._view_stack.setCurrentWidget(self._editor_view)
-
-    # ── Property value change (from editor or table) ─────────────────────────
+    # ── Property value change (root page: in-memory only) ────────────────────
 
     def _on_property_value_changed(self, page, property_id: str, value) -> None:
-        page_id = getattr(page, "id", None)
-        for p in getattr(page, "properties", []):
-            if getattr(p, "id", "") == property_id:
-                p.value = value
+        for page_property in getattr(page, "properties", []):
+            if getattr(page_property, "id", "") == property_id:
+                page_property.value = value
                 break
-        if self._db_mgr.current_database_name and page_id is not None:
-            if not self._db_mgr.update_page_property(page_id, property_id, value):
-                return
-            self._pages_view._fill_table()
-        # Root page: no schema persist; value is in memory and saved on editor save
-
-    # ── Property CRUD (delegated to PropertyManager) ─────────────────────────
-
-    def _on_add_property(self) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        if not self._prop_mgr.add_property(self._db_mgr.current_database_name, self):
-            return
-        self._refresh_db_pages()
-        if self._view_stack.currentWidget() is self._editor_view:
-            data = self._editor_view.get_edited_page_data()
-            if data is not None:
-                page_id = data[0]
-                for p in self._pages_view.get_pages():
-                    if getattr(p, "id", None) == page_id:
-                        self._editor_view.set_page(
-                            p,
-                            property_order=self._db_mgr.current_property_order,
-                            in_database=True,
-                        )
-                        break
-        show_toast(self, "Property added")
-
-    def _on_edit_property(self, prop) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        if self._prop_mgr.edit_property(self._db_mgr.current_database_name, prop, self):
-            self._refresh_db_pages()
-            show_toast(self, "Property updated")
-
-    def _on_remove_property(self, property_id: str) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        if self._prop_mgr.remove_property(
-            self._db_mgr.current_database_name, property_id, self
-        ):
-            self._refresh_db_pages()
-            show_toast(self, "Property removed")
-
-    def _on_save_order(self) -> None:
-        if not self._db_mgr.current_database_name:
-            alert(self, "Save column order", "Open a database first.")
-            return
-        try:
-            order = self._pages_view.get_property_order_for_save()
-        except RuntimeError as e:
-            alert(self, "Save column order", f"Could not read column order:\n\n{e!s}")
-            return
-        if self._prop_mgr.save_order(self._db_mgr.current_database_name, order, self):
-            self._refresh_db_pages()
-
-    # ── Refresh helper ───────────────────────────────────────────────────────
-
-    def _refresh_db_pages(self) -> None:
-        result = self._db_mgr.refresh_pages_and_schema()
-        if result is None:
-            return
-        pages, schema, prop_order = result
-        self._pages_view.set_pages(
-            pages,
-            title=self._db_mgr.current_database_name,
-            schema=schema,
-            property_order=prop_order,
-        )
+        if self._db_mgr.current_database_name and getattr(page, "id", None) is not None:
+            self._coordinator.on_property_value_changed(page, property_id, value)
 
     # ── Public API (used by MainWindow) ──────────────────────────────────────
 
@@ -723,7 +606,7 @@ class VaultView(QWidget):
             self._db_mgr.current_database_name
             and self._view_stack.currentWidget() is self._pages_view
         ):
-            self._on_new_db_page()
+            self._coordinator.on_new_page()
         else:
             self._on_new_root_page()
 
@@ -743,11 +626,11 @@ class VaultView(QWidget):
 
     def menu_add_property(self) -> None:
         """Add a property to the current database."""
-        self._on_add_property()
+        self._coordinator.on_add_property()
 
     def menu_save_order(self) -> None:
         """Save column order for the current database."""
-        self._on_save_order()
+        self._coordinator.on_save_order()
 
     def menu_reveal_in_explorer(self) -> None:
         """Reveal the selected tree item (or vault root) in the system file manager."""
@@ -770,7 +653,7 @@ class VaultView(QWidget):
         if self._view_stack.currentWidget() is self._pages_view:
             page = self._pages_view.get_selected_page()
             if page is not None:
-                self._on_db_page_delete_from_table(page)
+                self._coordinator.on_page_delete_from_table(page)
 
     def save_pending_state(self) -> None:
         """Persist editor content if the editor is visible (e.g. before closing)."""

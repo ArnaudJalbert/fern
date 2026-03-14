@@ -1,18 +1,32 @@
-"""Application controller: dependencies are injected; exposes a single API for the UI."""
+"""Application controller: dependencies are injected; exposes a single API for the UI.
+
+Re-exports application error types so infrastructure (PySide) never imports
+directly from ``fern.application``. Use::
+
+    from fern.infrastructure.controller import VaultNotFoundError, ...
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Protocol
 
-from fern.application.use_cases.add_page_property import AddPagePropertyUseCase
-from fern.application.use_cases.add_property import AddPropertyUseCase
 from fern.application.use_cases.create_page import CreatePageUseCase
-from fern.application.use_cases.delete_page import DeletePageUseCase
 from fern.application.use_cases.open_vault import OpenVaultUseCase
-from fern.application.use_cases.remove_property import RemovePropertyUseCase
-from fern.application.use_cases.update_page_property import UpdatePagePropertyUseCase
-from fern.application.use_cases.update_property import UpdatePropertyUseCase
-from fern.application.use_cases.update_property_order import UpdatePropertyOrderUseCase
+from fern.domain.entities import PropertyType as _PropertyType
+
+
+VaultOutput = OpenVaultUseCase.Output
+ChoiceOutput = OpenVaultUseCase.ChoiceOutput
+
+
+def default_value_for_type(type_key: str) -> object:
+    """Return the default value for a property type key (e.g. False for boolean)."""
+    return _PropertyType.from_key(type_key).value.default_value()
+
+
+def user_creatable_type_keys() -> list[str]:
+    """Return type keys the user can choose from (excludes id/title)."""
+    return [member.key() for member in _PropertyType.user_creatable()]
 
 
 class RecentVaultsPort(Protocol):
@@ -48,24 +62,19 @@ class AppController:
         create_database: Callable[[Path, str], bool],
         is_database_folder: Callable[[Path], bool],
         database_marker_name: str,
-        delete_page: Callable[[Path, str, int], DeletePageUseCase.Output],
+        delete_page: Callable[[Path, str, int], None],
         add_property: Callable[
-            [Path, str, str, str, str],
-            AddPropertyUseCase.Output,
+            [Path, str, str, str, str, list | None],
+            None,
         ],
-        add_page_property: Callable[
-            [Path, str, int, str, str, str], AddPagePropertyUseCase.Output
-        ],
-        remove_property: Callable[[Path, str, str], RemovePropertyUseCase.Output],
+        add_page_property: Callable[[Path, str, int, str, str, str], None],
+        remove_property: Callable[[Path, str, str], None],
         update_property: Callable[
-            [Path, str, str, str | None, str | None], UpdatePropertyUseCase.Output
+            [Path, str, str, str | None, str | None, list | None],
+            None,
         ],
-        update_property_order: Callable[
-            [Path, str, tuple[str, ...]], UpdatePropertyOrderUseCase.Output
-        ],
-        update_page_property: Callable[
-            [Path, str, int, str, bool | str], UpdatePagePropertyUseCase.Output
-        ],
+        update_property_order: Callable[[Path, str, tuple[str, ...]], None],
+        update_page_property: Callable[[Path, str, int, str, bool | str], None],
     ) -> None:
         self._recent_vaults = recent_vaults
         self._open_vault = open_vault
@@ -97,7 +106,7 @@ class AppController:
         self._recent_vaults.remove(path)
 
     def open_vault(self, path: Path) -> OpenVaultUseCase.Output:
-        """Open the vault at the given path; returns output DTO (success=False if invalid)."""
+        """Open the vault at the given path; returns vault data or raises VaultNotFoundError."""
         return self._open_vault(path)
 
     def create_vault(self, parent_dir: Path, name: str) -> Path | None:
@@ -153,8 +162,8 @@ class AppController:
         vault_path: Path,
         database_name: str,
         page_id: int,
-    ) -> DeletePageUseCase.Output:
-        """Remove the page from the given database; returns whether it was deleted."""
+    ) -> None:
+        """Remove the page from the given database. Raises PageNotFoundError if not found."""
         return self._delete_page(vault_path, database_name, page_id)
 
     def add_property(
@@ -164,14 +173,16 @@ class AppController:
         property_id: str,
         name: str,
         property_type: str,
-    ) -> AddPropertyUseCase.Output:
-        """Add a property to the schema and apply it to all pages synchronously."""
+        choices: list | None = None,
+    ) -> None:
+        """Add a property to the schema and apply it to all pages. Raises PropertyAlreadyExistsError if id exists."""
         return self._add_property(
             vault_path,
             database_name,
             property_id,
             name,
             property_type,
+            choices,
         )
 
     def add_page_property(
@@ -182,8 +193,8 @@ class AppController:
         property_id: str,
         name: str,
         property_type: str,
-    ) -> AddPagePropertyUseCase.Output:
-        """Add a property to a single page only (not to the schema)."""
+    ) -> None:
+        """Add a property to a single page only. Raises PageNotFoundError or PropertyAlreadyExistsOnPageError."""
         return self._add_page_property(
             vault_path, database_name, page_id, property_id, name, property_type
         )
@@ -193,8 +204,8 @@ class AppController:
         vault_path: Path,
         database_name: str,
         property_id: str,
-    ) -> RemovePropertyUseCase.Output:
-        """Remove a property from the schema and from all pages."""
+    ) -> None:
+        """Remove a property from the schema and from all pages. Raises PropertyNotFoundError if not in schema."""
         return self._remove_property(vault_path, database_name, property_id)
 
     def update_property(
@@ -204,10 +215,16 @@ class AppController:
         property_id: str,
         new_name: str | None = None,
         new_type: str | None = None,
-    ) -> UpdatePropertyUseCase.Output:
-        """Update a property's name and/or type in the schema and on all pages."""
+        new_choices: list | None = None,
+    ) -> None:
+        """Update a property's name and/or type in the schema and on all pages. Raises PropertyNotFoundError if not found."""
         return self._update_property(
-            vault_path, database_name, property_id, new_name, new_type
+            vault_path,
+            database_name,
+            property_id,
+            new_name,
+            new_type,
+            new_choices,
         )
 
     def open_vault_refresh(self, vault_path: Path) -> OpenVaultUseCase.Output:
@@ -219,7 +236,7 @@ class AppController:
         vault_path: Path,
         database_name: str,
         property_order: tuple[str, ...],
-    ) -> UpdatePropertyOrderUseCase.Output:
+    ) -> None:
         """Save the display order of properties for the database."""
         return self._update_property_order(vault_path, database_name, property_order)
 
@@ -230,8 +247,8 @@ class AppController:
         page_id: int,
         property_id: str,
         value: bool | str,
-    ) -> UpdatePagePropertyUseCase.Output:
-        """Update one property value on a page and persist (boolean or string)."""
+    ) -> None:
+        """Update one property value on a page and persist. Raises PageNotFoundError or PropertyNotFoundOnPageError."""
         return self._update_page_property(
             vault_path, database_name, page_id, property_id, value
         )

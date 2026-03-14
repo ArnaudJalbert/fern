@@ -24,3 +24,7 @@ build/
 
 # Tests
 .coverage
+
+# Docs
+site/
+public/

@@ -19,6 +19,10 @@ def test_property_type_key_title() -> None:
     assert PropertyType.TITLE.key() == "title"
 
 
+def test_property_type_key_status() -> None:
+    assert PropertyType.STATUS.key() == "status"
+
+
 def test_property_type_from_key_boolean() -> None:
     assert PropertyType.from_key("boolean") == PropertyType.BOOLEAN
 
@@ -33,6 +37,10 @@ def test_property_type_from_key_id() -> None:
 
 def test_property_type_from_key_title() -> None:
     assert PropertyType.from_key("title") == PropertyType.TITLE
+
+
+def test_property_type_from_key_status() -> None:
+    assert PropertyType.from_key("status") == PropertyType.STATUS
 
 
 def test_property_type_from_key_unknown_defaults_to_boolean() -> None:
@@ -52,6 +60,7 @@ def test_property_type_user_creatable() -> None:
     creatable = PropertyType.user_creatable()
     assert PropertyType.BOOLEAN in creatable
     assert PropertyType.STRING in creatable
+    assert PropertyType.STATUS in creatable
     assert PropertyType.ID not in creatable
     assert PropertyType.TITLE not in creatable
-    assert len(creatable) == 2
+    assert len(creatable) == 3

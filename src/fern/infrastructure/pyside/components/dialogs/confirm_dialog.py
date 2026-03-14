@@ -213,3 +213,18 @@ def alert(
         single_button=True,
     )
     d.exec()
+
+
+def show_error(
+    parent: QWidget | None,
+    message: str,
+    title: str = "Something went wrong",
+) -> None:
+    """Show a generic error window with the given message and optional title."""
+    d = ConfirmDialog(
+        parent,
+        title,
+        message,
+        single_button=True,
+    )
+    d.exec()

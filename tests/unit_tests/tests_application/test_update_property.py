@@ -1,7 +1,10 @@
 """Unit tests for UpdatePropertyUseCase."""
 
+import pytest
 from unittest.mock import MagicMock, patch
 
+from fern.application.dtos import UpdatePropertyInputDTO
+from fern.application.errors import PropertyNotFoundError
 from fern.application.use_cases.update_property import UpdatePropertyUseCase
 from fern.domain.entities import Page, Property, PropertyType
 
@@ -16,16 +19,15 @@ def test_update_property_success() -> None:
     use_case = UpdatePropertyUseCase(
         database_repository=db_repo, page_repository=page_repo
     )
-    out = use_case.execute(
-        UpdatePropertyUseCase.Input(
+    use_case.execute(
+        UpdatePropertyInputDTO(
             database_name="DB",
             property_id="p1",
             new_name="New Name",
-            new_type="boolean",
+            new_type_key="boolean",
         )
     )
 
-    assert out.success is True
     db_repo.save_schema.assert_called_once()
     call_args = db_repo.save_schema.call_args[0]
     assert call_args[1][0].name == "New Name"
@@ -40,11 +42,11 @@ def test_update_property_not_found_fails() -> None:
     use_case = UpdatePropertyUseCase(
         database_repository=db_repo, page_repository=page_repo
     )
-    out = use_case.execute(
-        UpdatePropertyUseCase.Input(database_name="DB", property_id="p1", new_name="X")
-    )
+    with pytest.raises(PropertyNotFoundError):
+        use_case.execute(
+            UpdatePropertyInputDTO(database_name="DB", property_id="p1", new_name="X")
+        )
 
-    assert out.success is False
     db_repo.save_schema.assert_not_called()
 
 
@@ -58,13 +60,10 @@ def test_update_property_name_only() -> None:
     use_case = UpdatePropertyUseCase(
         database_repository=db_repo, page_repository=page_repo
     )
-    out = use_case.execute(
-        UpdatePropertyUseCase.Input(
-            database_name="DB", property_id="p1", new_name="New"
-        )
+    use_case.execute(
+        UpdatePropertyInputDTO(database_name="DB", property_id="p1", new_name="New")
     )
 
-    assert out.success is True
     saved_prop = db_repo.save_schema.call_args[0][1][0]
     assert saved_prop.name == "New"
     assert saved_prop.type == PropertyType.STRING
@@ -83,8 +82,8 @@ def test_update_property_coerces_page_values() -> None:
         database_repository=db_repo, page_repository=page_repo
     )
     use_case.execute(
-        UpdatePropertyUseCase.Input(
-            database_name="DB", property_id="p1", new_type="boolean"
+        UpdatePropertyInputDTO(
+            database_name="DB", property_id="p1", new_type_key="boolean"
         )
     )
 
@@ -104,7 +103,7 @@ def test_update_property_empty_name_keeps_old() -> None:
         database_repository=db_repo, page_repository=page_repo
     )
     use_case.execute(
-        UpdatePropertyUseCase.Input(database_name="DB", property_id="p1", new_name="  ")
+        UpdatePropertyInputDTO(database_name="DB", property_id="p1", new_name="  ")
     )
 
     saved_prop = db_repo.save_schema.call_args[0][1][0]
@@ -125,9 +124,7 @@ def test_update_property_page_with_other_properties_preserved() -> None:
         database_repository=db_repo, page_repository=page_repo
     )
     use_case.execute(
-        UpdatePropertyUseCase.Input(
-            database_name="DB", property_id="p1", new_name="New"
-        )
+        UpdatePropertyInputDTO(database_name="DB", property_id="p1", new_name="New")
     )
 
     updated_props = page_repo.update.call_args[1]["properties"]
@@ -148,7 +145,7 @@ def test_update_property_empty_type_keeps_old() -> None:
         database_repository=db_repo, page_repository=page_repo
     )
     use_case.execute(
-        UpdatePropertyUseCase.Input(database_name="DB", property_id="p1", new_type="  ")
+        UpdatePropertyInputDTO(database_name="DB", property_id="p1", new_type_key="  ")
     )
 
     saved_prop = db_repo.save_schema.call_args[0][1][0]
@@ -173,8 +170,8 @@ def test_update_property_uses_default_value_when_coerced_value_is_none() -> None
             database_repository=db_repo, page_repository=page_repo
         )
         use_case.execute(
-            UpdatePropertyUseCase.Input(
-                database_name="DB", property_id="p1", new_type="boolean"
+            UpdatePropertyInputDTO(
+                database_name="DB", property_id="p1", new_type_key="boolean"
             )
         )
 
