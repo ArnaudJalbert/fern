@@ -11,6 +11,74 @@ from typing import Callable, Protocol
 from fern.infrastructure.pyside.utils import reveal_in_explorer_action_label
 
 
+# ─── Shared action item ───────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class ActionItem:
+    """One action item for any context menu or options menu: id, label, optional color."""
+
+    id: str
+    label: str
+    color: str | None = None
+    is_separator: bool = False
+
+
+def action_items_from_specs(
+    specs: list[tuple[str, str, str | None]],
+) -> list[ActionItem]:
+    """Build a list of ActionItems from a list of (id, label, color) tuples.
+
+    Use ``("_separator", "", None)`` to insert a separator.
+    """
+    result: list[ActionItem] = []
+    for action_id, label, color in specs:
+        if action_id == "_separator":
+            result.append(ActionItem("_separator", "", None, is_separator=True))
+        else:
+            result.append(ActionItem(id=action_id, label=label, color=color))
+    return result
+
+
+def build_options_menu(
+    parent,
+    actions: list[ActionItem],
+    callbacks: dict[str, Callable[[], None]],
+    *,
+    skip_ids: set[str] | None = None,
+):
+    """Build a QMenu from a list of ActionItems and a callbacks dict.
+
+    Each ActionItem whose id is in ``callbacks`` gets a menu entry; items with
+    ``color`` get a colored label via ``add_colored_action``.  Items whose id
+    is in ``skip_ids`` are silently omitted.
+    """
+    from PySide6.QtWidgets import QMenu
+
+    from fern.infrastructure.pyside.utils import add_colored_action
+
+    menu = QMenu(parent)
+    menu.setObjectName("vaultContentOptionsMenu")
+    for item in actions:
+        if item.is_separator:
+            menu.addSeparator()
+            continue
+        if skip_ids and item.id in skip_ids:
+            continue
+        callback = callbacks.get(item.id)
+        if callback is None:
+            continue
+        if item.color:
+            add_colored_action(menu, item.label, item.color, callback)
+        else:
+            action = menu.addAction(item.label)
+            action.triggered.connect(callback)
+    return menu
+
+
+# ─── Global edit / menu bar actions ────────────────────────────────────────────
+
+
 class MenuContextProtocol(Protocol):
     """Protocol for context that determines which actions are available."""
 
@@ -45,9 +113,7 @@ class ActionSpec:
     category: str  # "create" | "navigation" | "edit" | "destructive" | "separator"
     context_flag: str  # attribute name on MenuContext, e.g. "can_new_page"
     method_name: str  # method name on runner, e.g. "menu_new_page"
-    color: str | None = (
-        None  # for colored menu items, e.g. "#16a34a" green, "#dc2626" red
-    )
+    color: str | None = None
 
     def resolve_label(self) -> str:
         if callable(self.label):
@@ -55,17 +121,9 @@ class ActionSpec:
         return self.label
 
 
-# Edit menu / command palette actions (order and categories).
-# Separators are entries with id "_separator" and no method_name.
 GLOBAL_EDIT_ACTIONS: tuple[ActionSpec, ...] = (
     ActionSpec(
-        "new_page",
-        "New page",
-        "",
-        "create",
-        "can_new_page",
-        "menu_new_page",
-        "#16a34a",
+        "new_page", "New page", "", "create", "can_new_page", "menu_new_page", "#16a34a"
     ),
     ActionSpec(
         "new_database",
@@ -74,16 +132,9 @@ GLOBAL_EDIT_ACTIONS: tuple[ActionSpec, ...] = (
         "create",
         "can_new_database",
         "menu_new_database",
-        None,
     ),
     ActionSpec(
-        "new_folder",
-        "New folder",
-        "",
-        "create",
-        "can_new_folder",
-        "menu_new_folder",
-        None,
+        "new_folder", "New folder", "", "create", "can_new_folder", "menu_new_folder"
     ),
     ActionSpec(
         "reveal_in_explorer",
@@ -92,9 +143,8 @@ GLOBAL_EDIT_ACTIONS: tuple[ActionSpec, ...] = (
         "navigation",
         "can_reveal_in_explorer",
         "menu_reveal_in_explorer",
-        None,
     ),
-    ActionSpec("_separator", "", "", "separator", "", "", None),
+    ActionSpec("_separator", "", "", "separator", "", ""),
     ActionSpec(
         "add_property",
         "Add property",
@@ -102,7 +152,6 @@ GLOBAL_EDIT_ACTIONS: tuple[ActionSpec, ...] = (
         "edit",
         "can_add_property",
         "menu_add_property",
-        None,
     ),
     ActionSpec(
         "save_order",
@@ -111,17 +160,10 @@ GLOBAL_EDIT_ACTIONS: tuple[ActionSpec, ...] = (
         "edit",
         "can_save_order",
         "menu_save_order",
-        None,
     ),
-    ActionSpec("_separator", "", "", "separator", "", "", None),
+    ActionSpec("_separator", "", "", "separator", "", ""),
     ActionSpec(
-        "delete",
-        "Delete",
-        "",
-        "destructive",
-        "can_delete",
-        "menu_delete",
-        "#dc2626",
+        "delete", "Delete", "", "destructive", "can_delete", "menu_delete", "#dc2626"
     ),
 )
 
@@ -141,10 +183,7 @@ def get_edit_actions(
     menu_context: MenuContextProtocol | None,
     runner: ActionRunnerProtocol | None,
 ) -> list[ResolvedAction]:
-    """
-    Return the list of edit actions with resolved labels and availability.
-    Use for Edit menu, command palette, and any context that uses menu_context + runner.
-    """
+    """Return the list of edit actions with resolved labels and availability."""
     result: list[ResolvedAction] = []
     for spec in GLOBAL_EDIT_ACTIONS:
         if spec.id == "_separator":
@@ -179,7 +218,6 @@ def get_edit_actions(
                 label=spec.resolve_label(),
                 available=available,
                 callback=callback,
-                is_separator=False,
             )
         )
     return result
@@ -191,21 +229,24 @@ def get_edit_actions_for_command_palette(
     *,
     extra_actions: list[tuple[str, str, Callable[[], None]]] | None = None,
 ) -> list[tuple[str, str, Callable[[], None]]]:
-    """
-    Return (label, shortcut, callback) for the command palette.
-    Skips separators. Prepends extra_actions (e.g. Open..., See databases...) if given.
-    """
+    """Return (label, shortcut, callback) for the command palette."""
     out: list[tuple[str, str, Callable[[], None]]] = []
     if extra_actions:
         out.extend(extra_actions)
-    for ra in get_edit_actions(menu_context, runner):
-        if ra.is_separator:
+    for resolved_action in get_edit_actions(menu_context, runner):
+        if resolved_action.is_separator:
             continue
-        out.append((ra.label, ra.spec.shortcut, ra.callback))
+        out.append(
+            (
+                resolved_action.label,
+                resolved_action.spec.shortcut,
+                resolved_action.callback,
+            )
+        )
     return out
 
 
-# ─── Tree context (vault sidebar right‑click) ─────────────────────────────────
+# ─── Tree context (vault sidebar right-click) ─────────────────────────────────
 
 TreeSelectionType = str  # "file" | "folder" | "database" | "empty"
 
@@ -229,7 +270,6 @@ _TREE_COLORS: dict[str, str | None] = {
     "delete": "#dc2626",
 }
 
-# Order of action ids (and separators) per selection type for the tree context menu.
 TREE_ACTION_ORDER_BY_TYPE: dict[TreeSelectionType, list[str]] = {
     "file": ["open", "reveal", "_separator", "delete"],
     "database": ["open", "open_new_window", "reveal", "_separator", "new_page"],
@@ -238,109 +278,50 @@ TREE_ACTION_ORDER_BY_TYPE: dict[TreeSelectionType, list[str]] = {
 }
 
 
-@dataclass(frozen=True)
-class TreeActionItem:
-    """One action item for the tree context menu: id, resolved label, optional color."""
-
-    id: str
-    label: str
-    color: str | None
-    is_separator: bool = False
-
-
-def get_tree_actions(selection_type: TreeSelectionType) -> list[TreeActionItem]:
-    """
-    Return the list of tree context menu items (order and labels) for the given
-    selection type. The view supplies callbacks when building the menu.
-    """
+def get_tree_actions(selection_type: TreeSelectionType) -> list[ActionItem]:
+    """Return tree context menu items for the given selection type."""
     order = TREE_ACTION_ORDER_BY_TYPE.get(selection_type, [])
-    result: list[TreeActionItem] = []
-    for aid in order:
-        if aid == "_separator":
-            result.append(TreeActionItem("_separator", "", None, is_separator=True))
+    result: list[ActionItem] = []
+    for action_id in order:
+        if action_id == "_separator":
+            result.append(ActionItem("_separator", "", None, is_separator=True))
             continue
-        label_src = _TREE_LABELS.get(aid, aid)
-        label = label_src() if callable(label_src) else label_src
+        label_source = _TREE_LABELS.get(action_id, action_id)
+        label = label_source() if callable(label_source) else label_source
         result.append(
-            TreeActionItem(
-                id=aid,
-                label=label,
-                color=_TREE_COLORS.get(aid),
-                is_separator=False,
-            )
+            ActionItem(id=action_id, label=label, color=_TREE_COLORS.get(action_id))
         )
     return result
 
 
-# ─── Pages view (database table) options menu ─────────────────────────────────
+# ─── Pages view options menu ──────────────────────────────────────────────────
 
-PAGES_VIEW_ACTIONS: list[tuple[str, str, str | None]] = [
-    # (id, label, color)
-    ("new_page", "New page", "#16a34a"),
-    ("_separator", "", None),
-    ("add_property", "Add property", None),
-    ("save_order", "Save column order", None),
-]
-
-
-@dataclass(frozen=True)
-class PagesViewActionItem:
-    """One action item for the pages view options menu."""
-
-    id: str
-    label: str
-    color: str | None
-    is_separator: bool = False
+PAGES_VIEW_ACTIONS: list[ActionItem] = action_items_from_specs(
+    [
+        ("new_page", "New page", "#16a34a"),
+        ("_separator", "", None),
+        ("add_property", "Add property", None),
+        ("save_order", "Save column order", None),
+    ]
+)
 
 
-def get_pages_view_actions() -> list[PagesViewActionItem]:
+def get_pages_view_actions() -> list[ActionItem]:
     """Return the list of actions for the pages view options menu."""
-    result: list[PagesViewActionItem] = []
-    for aid, label, color in PAGES_VIEW_ACTIONS:
-        if aid == "_separator":
-            result.append(
-                PagesViewActionItem("_separator", "", None, is_separator=True)
-            )
-        else:
-            result.append(
-                PagesViewActionItem(
-                    id=aid, label=label, color=color, is_separator=False
-                )
-            )
-    return result
+    return list(PAGES_VIEW_ACTIONS)
 
 
-# ─── Editor view options menu ─────────────────────────────────────────────────
+# ─── Editor view options menu ────────────────────────────────────────────────
 
-EDITOR_VIEW_ACTIONS: list[tuple[str, str, str | None]] = [
-    ("add_property", "Add property", "#16a34a"),
-    ("_separator", "", None),
-    ("delete", "Delete", "#dc2626"),
-]
-
-
-@dataclass(frozen=True)
-class EditorViewActionItem:
-    """One action item for the editor view options menu."""
-
-    id: str
-    label: str
-    color: str | None
-    is_separator: bool = False
+EDITOR_VIEW_ACTIONS: list[ActionItem] = action_items_from_specs(
+    [
+        ("add_property", "Add property", "#16a34a"),
+        ("_separator", "", None),
+        ("delete", "Delete", "#dc2626"),
+    ]
+)
 
 
-def get_editor_view_actions() -> list[EditorViewActionItem]:
+def get_editor_view_actions() -> list[ActionItem]:
     """Return the list of actions for the editor view options menu."""
-    result: list[EditorViewActionItem] = []
-    for aid, label, color in EDITOR_VIEW_ACTIONS:
-        if aid == "_separator":
-            result.append(
-                EditorViewActionItem("_separator", "", None, is_separator=True)
-            )
-        else:
-            result.append(
-                EditorViewActionItem(
-                    id=aid, label=label, color=color, is_separator=False
-                )
-            )
-    return result
+    return list(EDITOR_VIEW_ACTIONS)

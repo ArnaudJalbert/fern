@@ -8,12 +8,12 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
 from fern.infrastructure.controller import AppController
-from fern.infrastructure.pyside.components import alert, confirm, show_toast
+from fern.infrastructure.pyside.components import show_error
 
 from .database_view import DatabaseView
 from .database_page_manager import DatabasePageManager
+from .database_view_coordinator import DatabaseViewCoordinator
 from .editor_view import EditorView
-from .page_data import PageData
 from .pages_view import PagesView
 from .property_manager import PropertyManager
 
@@ -31,28 +31,34 @@ class DatabasesOverviewWindow(QMainWindow):
         self._controller = controller
         self._vault_path = vault_path
 
-        self._db_mgr = DatabasePageManager(controller, vault_path)
-        self._prop_mgr = PropertyManager(controller, vault_path)
+        self._database_page_manager = DatabasePageManager(controller, vault_path)
+        self._property_manager = PropertyManager(controller, vault_path)
 
         self.setWindowTitle("Fern — Databases")
         self.setMinimumSize(640, 420)
         self.resize(800, 540)
 
         save_shortcut = QShortcut(QKeySequence.StandardKey.Save, self)
-        save_shortcut.activated.connect(self._on_editor_save)
+        save_shortcut.activated.connect(self._on_save_shortcut)
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
         undo_shortcut.activated.connect(self._on_undo_shortcut)
 
-        output = self._controller.open_vault_refresh(self._vault_path)
-        databases = output.databases if output.success else ()
+        try:
+            output = self._controller.open_vault_refresh(self._vault_path)
+            databases = output.databases
+        except Exception as exception:
+            show_error(self, str(exception))
+            databases = ()
 
+        # Database list (first screen)
         self._main_stack = QStackedWidget()
         self.setCentralWidget(self._main_stack)
 
-        self._db_view = DatabaseView(databases=databases)
-        self._db_view.database_selected.connect(self._on_database_selected)
-        self._main_stack.addWidget(self._db_view)
+        self._database_view = DatabaseView(databases=databases)
+        self._database_view.database_selected.connect(self._on_database_selected)
+        self._main_stack.addWidget(self._database_view)
 
+        # Content area (pages + editor, second screen)
         self._content_widget = QWidget()
         content_layout = QVBoxLayout(self._content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
@@ -60,28 +66,25 @@ class DatabasesOverviewWindow(QMainWindow):
         self._content_stack = QStackedWidget()
         self._pages_view = PagesView()
         self._pages_view.back_requested.connect(self._on_pages_back)
-        self._pages_view.page_activated.connect(self._on_page_activated)
-        self._pages_view.new_page_requested.connect(self._on_new_page)
-        self._pages_view.page_delete_requested.connect(self._on_page_delete_from_table)
-        self._pages_view.add_property_requested.connect(self._on_add_property)
-        self._pages_view.property_value_changed.connect(self._on_property_value_changed)
-        self._pages_view.property_edit_requested.connect(self._on_edit_property)
-        self._pages_view.property_remove_requested.connect(self._on_remove_property)
-        self._pages_view.save_order_requested.connect(self._on_save_order)
         self._content_stack.addWidget(self._pages_view)
 
         self._editor_view = EditorView()
-        self._editor_view.back_requested.connect(self._on_editor_back)
-        self._editor_view.save_requested.connect(self._on_editor_save)
-        self._editor_view.delete_requested.connect(self._on_editor_delete)
-        self._editor_view.add_property_requested.connect(self._on_add_property)
-        self._editor_view.property_value_changed.connect(
-            self._on_property_value_changed
-        )
         self._content_stack.addWidget(self._editor_view)
 
         content_layout.addWidget(self._content_stack)
         self._main_stack.addWidget(self._content_widget)
+
+        self._coordinator = DatabaseViewCoordinator(
+            database_page_manager=self._database_page_manager,
+            property_manager=self._property_manager,
+            pages_view=self._pages_view,
+            editor_view=self._editor_view,
+            stack=self._content_stack,
+            host=self,
+        )
+        self._coordinator.wire_signals()
+
+    # ── Database selection ───────────────────────────────────────────────────
 
     def _on_database_selected(self, database) -> None:
         name = getattr(database, "name", str(database))
@@ -89,181 +92,44 @@ class DatabasesOverviewWindow(QMainWindow):
         self._main_stack.setCurrentWidget(self._content_widget)
 
     def _on_pages_back(self) -> None:
-        self._main_stack.setCurrentWidget(self._db_view)
+        self._main_stack.setCurrentWidget(self._database_view)
 
     def _load_database(self, database_name: str) -> None:
         fresh = self._controller.open_vault_refresh(self._vault_path)
-        db = self._db_mgr.find_database(fresh, database_name)
-        if db is None:
+        database = self._database_page_manager.find_database(fresh, database_name)
+        if database is None:
             return
-        self._db_mgr.current_database_name = database_name
-        self._db_mgr.current_property_order = getattr(db, "property_order", ()) or ()
-        pages = self._db_mgr.pages_from_output(db)
+        self._database_page_manager.current_database_name = database_name
+        self._database_page_manager.current_property_order = (
+            getattr(database, "property_order", ()) or ()
+        )
+        self._database_page_manager.current_schema = (
+            getattr(database, "schema", ()) or ()
+        )
+        pages = self._database_page_manager.pages_from_output(database)
         self._pages_view.set_pages(
             pages,
             title=database_name,
-            schema=getattr(db, "schema", ()),
-            property_order=self._db_mgr.current_property_order,
+            schema=getattr(database, "schema", ()),
+            property_order=self._database_page_manager.current_property_order,
         )
         self._content_stack.setCurrentWidget(self._pages_view)
 
-    def _on_page_activated(self, page) -> None:
-        self._editor_view.set_page(
-            page, property_order=self._db_mgr.current_property_order, in_database=True
-        )
-        self._content_stack.setCurrentWidget(self._editor_view)
+    # ── Shortcuts ────────────────────────────────────────────────────────────
 
-    def _on_editor_back(self) -> None:
-        self._on_editor_save()
-        self._content_stack.setCurrentWidget(self._pages_view)
-
-    def _on_editor_save(self) -> None:
-        data = self._editor_view.get_edited_page_data()
-        if data is None or not self._db_mgr.current_database_name:
-            return
-        page_id, title, content = data
-        page_props = getattr(self._editor_view._page, "properties", None)
-        self._db_mgr.save_page(page_id, title, content, properties=page_props)
-        current = self._pages_view.get_pages()
-        updated = []
-        for p in current:
-            if getattr(p, "id", 0) == page_id:
-                p = PageData.from_use_case_page(p)
-                p.title = title
-                p.content = content
-                p.update_mandatory_props(page_id, title)
-            updated.append(p)
-        self._pages_view.set_pages(updated)
-        show_toast(self, "Saved")
+    def _on_save_shortcut(self) -> None:
+        self._coordinator.on_editor_save()
 
     def _on_undo_shortcut(self) -> None:
-        w = self.focusWidget()
-        if w is not None and hasattr(w, "undo") and callable(getattr(w, "undo")):
-            w.undo()
-
-    def _on_page_delete_from_table(self, page) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        self._delete_page(
-            getattr(page, "id", None),
-            getattr(page, "title", "this page"),
-            clear_editor=False,
-        )
-
-    def _on_editor_delete(self) -> None:
-        data = self._editor_view.get_edited_page_data()
-        if data is None or not self._db_mgr.current_database_name:
-            return
-        self._delete_page(data[0], data[1], clear_editor=True)
-
-    def _delete_page(self, page_id: int, title: str, *, clear_editor: bool) -> None:
-        if not confirm(
-            self,
-            "Delete page",
-            f'Delete page "{title}"? This cannot be undone.',
-            destructive=True,
-            confirm_label="Delete",
-            cancel_label="Cancel",
+        widget = self.focusWidget()
+        if (
+            widget is not None
+            and hasattr(widget, "undo")
+            and callable(getattr(widget, "undo"))
         ):
-            return
-        if not self._db_mgr.delete_page(page_id):
-            return
-        show_toast(self, "Page deleted")
-        current = self._pages_view.get_pages()
-        self._pages_view.set_pages(
-            [p for p in current if getattr(p, "id", None) != page_id]
-        )
-        if clear_editor:
-            self._editor_view.set_page(None)
-            self._content_stack.setCurrentWidget(self._pages_view)
-
-    def _on_new_page(self) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        new_page = self._db_mgr.create_page(schema=self._pages_view.get_schema())
-        current = self._pages_view.get_pages()
-        self._pages_view.set_pages([*current, new_page])
-        show_toast(self, "Page created")
-        self._editor_view.set_page(
-            new_page,
-            property_order=self._db_mgr.current_property_order,
-            in_database=True,
-        )
-        self._content_stack.setCurrentWidget(self._editor_view)
-
-    def _on_property_value_changed(self, page, property_id: str, value) -> None:
-        page_id = getattr(page, "id", None)
-        if page_id is None or not self._db_mgr.current_database_name:
-            return
-        if not self._db_mgr.update_page_property(page_id, property_id, value):
-            return
-        for p in getattr(page, "properties", []):
-            if getattr(p, "id", "") == property_id:
-                p.value = value
-                break
-        self._pages_view._fill_table()
-
-    def _on_add_property(self) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        if not self._prop_mgr.add_property(self._db_mgr.current_database_name, self):
-            return
-        self._refresh()
-        if self._content_stack.currentWidget() is self._editor_view:
-            data = self._editor_view.get_edited_page_data()
-            if data is not None:
-                page_id = data[0]
-                for p in self._pages_view.get_pages():
-                    if getattr(p, "id", None) == page_id:
-                        self._editor_view.set_page(
-                            p,
-                            property_order=self._db_mgr.current_property_order,
-                            in_database=True,
-                        )
-                        break
-        show_toast(self, "Property added")
-
-    def _on_edit_property(self, prop) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        if self._prop_mgr.edit_property(self._db_mgr.current_database_name, prop, self):
-            self._refresh()
-            show_toast(self, "Property updated")
-
-    def _on_remove_property(self, property_id: str) -> None:
-        if not self._db_mgr.current_database_name:
-            return
-        if self._prop_mgr.remove_property(
-            self._db_mgr.current_database_name, property_id, self
-        ):
-            self._refresh()
-            show_toast(self, "Property removed")
-
-    def _on_save_order(self) -> None:
-        if not self._db_mgr.current_database_name:
-            alert(self, "Save column order", "Open a database first.")
-            return
-        try:
-            order = self._pages_view.get_property_order_for_save()
-        except RuntimeError as e:
-            alert(self, "Save column order", f"Could not read column order:\n\n{e!s}")
-            return
-        if self._prop_mgr.save_order(self._db_mgr.current_database_name, order, self):
-            self._refresh()
-
-    def _refresh(self) -> None:
-        result = self._db_mgr.refresh_pages_and_schema()
-        if result is None:
-            return
-        pages, schema, prop_order = result
-        self._pages_view.set_pages(
-            pages,
-            title=self._db_mgr.current_database_name,
-            schema=schema,
-            property_order=prop_order,
-        )
+            widget.undo()
 
     def closeEvent(self, event) -> None:
         if self._content_stack.currentWidget() is self._editor_view:
-            self._on_editor_save()
+            self._coordinator.on_editor_save()
         event.accept()

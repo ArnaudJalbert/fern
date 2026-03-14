@@ -56,6 +56,8 @@ Unit tests target application, domain, and interface_adapters (100% coverage enf
 **CI/CD (GitLab):**
 
 - **Merge requests:** version must differ from target branch; `CHANGELOG.md` must have `## [x.y.z]` for that version; unit tests (uv + pytest + cov); package build.
-- **Push to default branch:** build → publish to **GitLab Package Registry** and **PyPI** (twine); create **release** and **tag** `v<x.y.z>` via Releases API. PyPI requires CI variable `PYPI_API_TOKEN`.
+- **Push to default branch:** build → publish to **GitLab Package Registry** and **PyPI** (twine); create **release** and **tag** `v<x.y.z>` via Releases API; build and deploy **documentation** to **GitLab Pages**. PyPI requires CI variable `PYPI_API_TOKEN`.
+
+**Documentation:** Architecture and developer guide built with [MkDocs](https://www.mkdocs.org/) + [Material](https://squidfunk.github.io/mkdocs-material/), hosted on GitLab Pages. Run locally with `uv run mkdocs serve`.
 
 **Versioning:** Semantic Versioning; changelog format [Keep a Changelog](https://keepachangelog.com/). Bump `version` in `pyproject.toml` and add a changelog section for each release.

@@ -81,19 +81,19 @@ class ControllerFactory:
             domain_props = None
             if properties is not None:
                 domain_props = []
-                for p in properties:
-                    pid = getattr(p, "id", "")
-                    if pid in ("id", "title"):
+                for page_property in properties:
+                    property_id = getattr(page_property, "id", "")
+                    if property_id in ("id", "title"):
                         continue
-                    ptype = getattr(p, "type", "string")
-                    if isinstance(ptype, str):
-                        ptype = PropertyType.from_key(ptype)
+                    property_type = getattr(page_property, "type", "string")
+                    if isinstance(property_type, str):
+                        property_type = PropertyType.from_key(property_type)
                     domain_props.append(
                         Property(
-                            id=pid,
-                            name=getattr(p, "name", pid),
-                            type=ptype,
-                            value=getattr(p, "value", None),
+                            id=property_id,
+                            name=getattr(page_property, "name", property_id),
+                            type=property_type,
+                            value=getattr(page_property, "value", None),
                         )
                     )
             repo.update(page_id, title, content, properties=domain_props)
@@ -166,12 +166,20 @@ class ControllerFactory:
             property_id: str,
             name: str,
             property_type: str,
+            choices: list | None = None,
         ):
+            from fern.application.dtos import (
+                AddPropertyInputDTO,
+                ApplyPropertyToPagesInputDTO,
+                BooleanPropertyInputDTO,
+                ChoiceDTO,
+                StatusPropertyInputDTO,
+                StringPropertyInputDTO,
+            )
             from fern.application.use_cases.add_property import AddPropertyUseCase
             from fern.application.use_cases.apply_property_to_pages import (
                 ApplyPropertyToPagesUseCase,
             )
-            from fern.domain.entities import PropertyType
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
@@ -179,31 +187,58 @@ class ControllerFactory:
                 VaultDatabaseRepository,
             )
 
+            def _property_input_dto(
+                prop_id: str,
+                prop_name: str,
+                prop_type: str,
+                prop_choices: list | None,
+            ):
+                if prop_type == "status" and prop_choices:
+                    return StatusPropertyInputDTO(
+                        property_id=prop_id,
+                        name=prop_name,
+                        choices=tuple(
+                            ChoiceDTO(
+                                name=choice.name,
+                                category=choice.category,
+                                color=choice.color,
+                            )
+                            for choice in prop_choices
+                        ),
+                    )
+                if prop_type == "string":
+                    return StringPropertyInputDTO(
+                        property_id=prop_id,
+                        name=prop_name,
+                    )
+                return BooleanPropertyInputDTO(
+                    property_id=prop_id,
+                    name=prop_name,
+                )
+
+            property_dto = _property_input_dto(
+                prop_id=property_id,
+                prop_name=name,
+                prop_type=property_type,
+                prop_choices=choices,
+            )
             db_repo = VaultDatabaseRepository(vault_path)
             use_case = AddPropertyUseCase(db_repo)
-            ptype = PropertyType.from_key(property_type)
-            out = use_case.execute(
-                AddPropertyUseCase.Input(
+            use_case.execute(
+                AddPropertyInputDTO(
                     database_name=database_name,
-                    property_id=property_id,
-                    name=name,
-                    type=ptype,
+                    property=property_dto,
                 )
             )
-            if not out.success:
-                return out
-
             page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             apply_uc = ApplyPropertyToPagesUseCase(page_repo)
             apply_uc.execute(
-                ApplyPropertyToPagesUseCase.Input(
+                ApplyPropertyToPagesInputDTO(
                     property_id=property_id,
                     name=name,
-                    type=ptype,
+                    type_key=property_type,
                 )
             )
-
-            return out
 
         def add_page_property(
             vault_path: Path,
@@ -213,23 +248,22 @@ class ControllerFactory:
             name: str,
             property_type: str,
         ):
+            from fern.application.dtos import AddPagePropertyInputDTO
             from fern.application.use_cases.add_page_property import (
                 AddPagePropertyUseCase,
             )
-            from fern.domain.entities import PropertyType
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
 
             page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = AddPagePropertyUseCase(page_repo)
-            ptype = PropertyType.from_key(property_type)
             return use_case.execute(
-                AddPagePropertyUseCase.Input(
+                AddPagePropertyInputDTO(
                     page_id=page_id,
                     property_id=property_id,
                     name=name,
-                    type=ptype,
+                    type_key=property_type,
                 )
             )
 
@@ -258,7 +292,9 @@ class ControllerFactory:
             property_id: str,
             new_name: str | None = None,
             new_type: str | None = None,
+            new_choices: list | None = None,
         ):
+            from fern.application.dtos import ChoiceDTO, UpdatePropertyInputDTO
             from fern.application.use_cases.update_property import UpdatePropertyUseCase
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
@@ -270,12 +306,19 @@ class ControllerFactory:
             db_repo = VaultDatabaseRepository(vault_path)
             page_repo = MarkdownPageRepository(_db_dir(vault_path, database_name))
             use_case = UpdatePropertyUseCase(db_repo, page_repo)
+            new_choices_dto = None
+            if new_choices is not None:
+                new_choices_dto = tuple(
+                    ChoiceDTO(name=c.name, category=c.category, color=c.color)
+                    for c in new_choices
+                )
             return use_case.execute(
-                UpdatePropertyUseCase.Input(
+                UpdatePropertyInputDTO(
                     database_name=database_name,
                     property_id=property_id,
                     new_name=new_name,
-                    new_type=new_type,
+                    new_type_key=new_type,
+                    new_choices=new_choices_dto,
                 )
             )
 

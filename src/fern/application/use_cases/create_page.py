@@ -1,5 +1,7 @@
 """Use case: create a new page in the repository (configured database folder)."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from fern.domain.repositories.page_repository import PageRepository
@@ -20,8 +22,24 @@ class CreatePageUseCase:
         content: str
 
     def __init__(self, page_repository: PageRepository) -> None:
+        """Initialize the use case with the page repository.
+
+        Args:
+            page_repository: The repository for creating pages.
+        """
         self._page_repository = page_repository
 
     def execute(self, input_data: Input) -> Output:
-        page = self._page_repository.create(input_data.title, input_data.content)
-        return self.Output(page_id=page.id, title=page.title, content=page.content)
+        """Create a page and return its output DTO."""
+        # Create the page in the repository
+        page = self._page_repository.create(
+            input_data.title,
+            input_data.content,
+        )
+
+        # Build and return output DTO
+        return self.Output(
+            page_id=page.id,
+            title=page.title,
+            content=page.content,
+        )

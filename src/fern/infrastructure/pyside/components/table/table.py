@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fern.infrastructure.pyside.components.table_model import TableModel
+from .table_model import TableModel
 
 _DEFAULT_COL_WIDTH = 150
 

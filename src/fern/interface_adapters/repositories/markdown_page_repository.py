@@ -21,16 +21,16 @@ def _properties_from_raw(raw) -> list[Property]:
                 continue
             pid = str(item["id"])
             name = str(item.get("name", pid))
-            ptype = PropertyType.from_key(str(item.get("type", "boolean")))
+            property_type = PropertyType.from_key(str(item.get("type", "boolean")))
             raw_value = item.get("value")
-            if raw_value is None and hasattr(ptype.value, "default_value"):
-                raw_value = ptype.value.default_value()
+            if raw_value is None and hasattr(property_type.value, "default_value"):
+                raw_value = property_type.value.default_value()
             value = (
-                ptype.value.coerce(raw_value)
-                if hasattr(ptype.value, "coerce")
+                property_type.value.coerce(raw_value)
+                if hasattr(property_type.value, "coerce")
                 else raw_value
             )
-            out.append(Property(id=pid, name=name, type=ptype, value=value))
+            out.append(Property(id=pid, name=name, type=property_type, value=value))
         return out
     if isinstance(raw, dict):
         return [
@@ -45,8 +45,13 @@ def _properties_from_raw(raw) -> list[Property]:
 def _properties_to_raw(properties: list[Property]) -> list[dict]:
     """Serialize list[Property] for frontmatter (type as string for YAML)."""
     return [
-        {"id": p.id, "name": p.name, "type": p.type.key(), "value": p.value}
-        for p in properties
+        {
+            "id": page_property.id,
+            "name": page_property.name,
+            "type": page_property.type.key(),
+            "value": page_property.value,
+        }
+        for page_property in properties
     ]
 
 

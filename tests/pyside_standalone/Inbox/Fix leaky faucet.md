@@ -2,17 +2,17 @@
 id: 102
 properties:
 - id: priority
-  name: Priority
+  name: testy
   type: string
   value: ''
 - id: done
   name: Done
   type: boolean
   value: false
-- id: test
-  name: Test
-  type: boolean
-  value: true
+- id: status
+  name: Status
+  type: status
+  value: Not Started
 ---
 
 The kitchen faucet drips when turned off. Probably needs a new washer.

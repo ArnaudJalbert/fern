@@ -1,0 +1,47 @@
+---
+description: Fern repo guidelines — Unix philosophy, open source, open files, clean architecture
+alwaysApply: true
+---
+
+# Fern repo guidelines
+
+When editing this codebase, follow these principles.
+
+## Unix philosophy
+
+- **Do one thing well.** Each module, use case, or component should have a single, clear responsibility. Prefer small, focused units over large multi-purpose modules.
+- **Text and streams.** Prefer text-based formats (markdown, YAML, JSON) and stream-like processing where appropriate. Avoid binary or opaque formats for core data.
+- **Composability.** Design so pieces can be combined or replaced. Avoid hidden global state and tight coupling between layers.
+- **Small, sharp tools.** Prefer many small functions/classes over few large ones. Name clearly so intent is obvious.
+
+## Naming and readability
+
+- **No single-letter variables.** Never use `i`, `j`, `e`, `c`, `p`, `x`, etc. as variable names. Use descriptive names (e.g. `index`, `item`, `exception`, `choice`, `property`, `value`).
+- **Be explicit.** Prefer long, descriptive names over short or cryptic ones. Clarity over brevity (e.g. `database_repository`, `property_order`, `selected_choice`).
+- **No abbreviations.** Spell names in full: use `repository` not `repo`, `database` not `db`, `property` not `prop`, `identifier` not `id` when it is the main concept (except where `id` is the established domain term, e.g. property id). Use `configuration` not `config`, `temporary` not `tmp`, `message` not `msg`, etc.
+
+## Open source
+
+- **No proprietary lock-in.** Do not introduce dependencies or formats that prevent users from viewing, editing, or migrating their data with standard tools.
+- **Contribution-friendly.** Keep code readable, documented, and testable. Public APIs and layout are documented in README and package READMEs (e.g. `src/fern/infrastructure/pyside/README.md`).
+- **License and attribution.** Respect the project license; do not add code or assets that conflict with it.
+
+## Open files
+
+- **Data is files.** Vault data lives as markdown files with YAML frontmatter in the user’s folder. Schema lives in `schema.json` per database. The user can open, edit, and version these with any editor or tool.
+- **No opaque storage.** Do not move core content into a closed binary format or a database the user cannot inspect or edit as files. Persistence is filesystem-based (see `interface_adapters/repositories`).
+- **Paths and files are first-class.** Prefer file paths and file-based APIs over in-memory-only abstractions for persistent data.
+
+## Clean architecture
+
+- **Layers:** `domain/` → `application/` → `interface_adapters/` → `infrastructure/`. Dependencies point **inward** only. Domain and application must not import from interface_adapters or infrastructure.
+- **Domain:** Entities and repository **ports** (abstract interfaces). No framework or I/O here.
+- **Application:** Use cases only. They depend on domain and call repository ports; they do not know about PySide6 or the filesystem.
+- **Interface adapters:** Implementations of repository ports (e.g. filesystem vault, markdown page repos). They translate between domain and concrete I/O.
+- **Infrastructure:** UI (PySide6), factory wiring, and other framework-specific code. It depends on application/domain and injects adapters into use cases.
+
+- **No domain entities in use case I/O.** Never expose domain entities outside interface adapters and application layer. Use cases accept and return **DTOs** only (plain data: dataclasses or simple types). The use case parses DTOs and builds domain entities internally; callers (controller, factory) pass DTOs and never construct or pass domain entities.
+
+- **No success or message in use case output.** The use case not failing is the sign of success. If no data needs to be returned, the use case returns nothing (None). On failure, the use case raises a specific error; never return an output that carries success/message flags.
+
+When adding features: put new behavior in the correct layer; extend ports in domain and implement in interface_adapters; add use cases in application; wire and present in infrastructure. Keep tests for application, domain, and interface_adapters (see `.coveragerc`).

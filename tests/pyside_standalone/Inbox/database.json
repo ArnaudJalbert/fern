@@ -2,7 +2,7 @@
   "properties": [
     {
       "id": "priority",
-      "name": "Priority",
+      "name": "testy",
       "type": "string"
     },
     {
@@ -11,16 +11,38 @@
       "type": "boolean"
     },
     {
-      "id": "test",
-      "name": "Test",
-      "type": "boolean"
+      "id": "status",
+      "name": "Status",
+      "type": "status",
+      "choices": [
+        {
+          "name": "In Progress",
+          "category": "In Progress",
+          "color": "#f472b6"
+        },
+        {
+          "name": "Not Started",
+          "category": "To Do",
+          "color": "#f87171"
+        },
+        {
+          "name": "Backlog",
+          "category": "To Do",
+          "color": ""
+        },
+        {
+          "name": "Done",
+          "category": "Completed",
+          "color": "#4ade80"
+        }
+      ]
     }
   ],
   "propertyOrder": [
     "title",
-    "test",
     "priority",
     "done",
-    "id"
+    "id",
+    "status"
   ]
 }

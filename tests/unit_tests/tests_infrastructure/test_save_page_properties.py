@@ -19,6 +19,12 @@ from fern.interface_adapters.repositories.markdown_page_repository import (
 from fern.interface_adapters.repositories.vault_database_repository import (
     VaultDatabaseRepository,
 )
+from fern.application.dtos import (
+    AddPropertyInputDTO,
+    ApplyPropertyToPagesInputDTO,
+    BooleanPropertyInputDTO,
+    StringPropertyInputDTO,
+)
 from fern.application.use_cases.add_property import AddPropertyUseCase
 from fern.application.use_cases.apply_property_to_pages import (
     ApplyPropertyToPagesUseCase,
@@ -61,19 +67,19 @@ def _build_save_page(vault_path: Path):
         domain_props = None
         if properties is not None:
             domain_props = []
-            for p in properties:
-                pid = getattr(p, "id", "")
-                if pid in ("id", "title"):
+            for page_property in properties:
+                property_id = getattr(page_property, "id", "")
+                if property_id in ("id", "title"):
                     continue
-                ptype = getattr(p, "type", "string")
-                if isinstance(ptype, str):
-                    ptype = PropertyType.from_key(ptype)
+                property_type = getattr(page_property, "type", "string")
+                if isinstance(property_type, str):
+                    property_type = PropertyType.from_key(property_type)
                 domain_props.append(
                     Property(
-                        id=pid,
-                        name=getattr(p, "name", pid),
-                        type=ptype,
-                        value=getattr(p, "value", None),
+                        id=property_id,
+                        name=getattr(page_property, "name", property_id),
+                        type=property_type,
+                        value=getattr(page_property, "value", None),
                     )
                 )
         repo.update(page_id, title, content, properties=domain_props)
@@ -283,25 +289,24 @@ class TestAddPropertyUpdatesFiles:
         repo.create("Page B", "content b")
 
         db_repo = VaultDatabaseRepository(vault)
-        ptype = PropertyType.from_key("boolean")
 
         schema_uc = AddPropertyUseCase(db_repo)
-        out = schema_uc.execute(
-            AddPropertyUseCase.Input(
+        schema_uc.execute(
+            AddPropertyInputDTO(
                 database_name="mydb",
-                property_id="done",
-                name="Done",
-                type=ptype,
+                property=BooleanPropertyInputDTO(
+                    property_id="done",
+                    name="Done",
+                ),
             )
         )
-        assert out.success
 
         apply_uc = ApplyPropertyToPagesUseCase(repo)
         apply_uc.execute(
-            ApplyPropertyToPagesUseCase.Input(
+            ApplyPropertyToPagesInputDTO(
                 property_id="done",
                 name="Done",
-                type=ptype,
+                type_key="boolean",
             )
         )
 
@@ -322,21 +327,21 @@ class TestAddPropertyUpdatesFiles:
         repo.create("Only Page", "body")
 
         db_repo = VaultDatabaseRepository(vault)
-        ptype = PropertyType.from_key("string")
 
         AddPropertyUseCase(db_repo).execute(
-            AddPropertyUseCase.Input(
+            AddPropertyInputDTO(
                 database_name="mydb",
-                property_id="tag",
-                name="Tag",
-                type=ptype,
+                property=StringPropertyInputDTO(
+                    property_id="tag",
+                    name="Tag",
+                ),
             )
         )
         ApplyPropertyToPagesUseCase(repo).execute(
-            ApplyPropertyToPagesUseCase.Input(
+            ApplyPropertyToPagesInputDTO(
                 property_id="tag",
                 name="Tag",
-                type=ptype,
+                type_key="string",
             )
         )
 
@@ -361,21 +366,21 @@ class TestAddPropertyUpdatesFiles:
         )
 
         db_repo = VaultDatabaseRepository(vault)
-        ptype = PropertyType.from_key("string")
 
         AddPropertyUseCase(db_repo).execute(
-            AddPropertyUseCase.Input(
+            AddPropertyInputDTO(
                 database_name="mydb",
-                property_id="new_prop",
-                name="New",
-                type=ptype,
+                property=StringPropertyInputDTO(
+                    property_id="new_prop",
+                    name="New",
+                ),
             )
         )
         ApplyPropertyToPagesUseCase(repo).execute(
-            ApplyPropertyToPagesUseCase.Input(
+            ApplyPropertyToPagesInputDTO(
                 property_id="new_prop",
                 name="New",
-                type=ptype,
+                type_key="string",
             )
         )
 
@@ -392,21 +397,21 @@ class TestAddPropertyUpdatesFiles:
         vault, db_dir = _setup_database_with_schema(tmp_path)
         repo = MarkdownPageRepository(db_dir)
         db_repo = VaultDatabaseRepository(vault)
-        ptype = PropertyType.from_key("boolean")
 
         AddPropertyUseCase(db_repo).execute(
-            AddPropertyUseCase.Input(
+            AddPropertyInputDTO(
                 database_name="mydb",
-                property_id="flag",
-                name="Flag",
-                type=ptype,
+                property=BooleanPropertyInputDTO(
+                    property_id="flag",
+                    name="Flag",
+                ),
             )
         )
         ApplyPropertyToPagesUseCase(repo).execute(
-            ApplyPropertyToPagesUseCase.Input(
+            ApplyPropertyToPagesInputDTO(
                 property_id="flag",
                 name="Flag",
-                type=ptype,
+                type_key="boolean",
             )
         )
 

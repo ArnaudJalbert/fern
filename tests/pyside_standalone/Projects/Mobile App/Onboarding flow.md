@@ -13,6 +13,10 @@ properties:
   name: Done
   type: boolean
   value: true
+- id: fast
+  name: fast
+  type: boolean
+  value: false
 ---
 
 # Onboarding flow

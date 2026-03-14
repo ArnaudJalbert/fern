@@ -1,7 +1,9 @@
 """Unit tests for RemovePropertyUseCase."""
 
+import pytest
 from unittest.mock import MagicMock
 
+from fern.application.errors import PropertyNotFoundError
 from fern.application.use_cases.remove_property import RemovePropertyUseCase
 from fern.domain.entities import Page, Property, PropertyType
 
@@ -16,11 +18,8 @@ def test_remove_property_success() -> None:
     use_case = RemovePropertyUseCase(
         database_repository=db_repo, page_repository=page_repo
     )
-    out = use_case.execute(
-        RemovePropertyUseCase.Input(database_name="DB", property_id="p1")
-    )
+    use_case.execute(RemovePropertyUseCase.Input(database_name="DB", property_id="p1"))
 
-    assert out.success is True
     db_repo.save_schema.assert_called_once()
     call_args = db_repo.save_schema.call_args[0]
     assert len(call_args[1]) == 0
@@ -35,11 +34,11 @@ def test_remove_property_not_found_fails() -> None:
     use_case = RemovePropertyUseCase(
         database_repository=db_repo, page_repository=page_repo
     )
-    out = use_case.execute(
-        RemovePropertyUseCase.Input(database_name="DB", property_id="p1")
-    )
+    with pytest.raises(PropertyNotFoundError):
+        use_case.execute(
+            RemovePropertyUseCase.Input(database_name="DB", property_id="p1")
+        )
 
-    assert out.success is False
     db_repo.save_schema.assert_not_called()
 
 

@@ -14,16 +14,17 @@ from PySide6.QtCore import QEvent, QModelIndex, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QHeaderView, QMenu, QWidget
 
-from fern.infrastructure.pyside.actions import get_pages_view_actions
-from fern.infrastructure.pyside.utils import add_colored_action
+from fern.infrastructure.pyside.actions import PAGES_VIEW_ACTIONS, build_options_menu
 from fern.infrastructure.pyside.components import (
     CheckboxDelegate,
+    StatusComboDelegate,
     Table,
     TextEditDelegate,
     WrappingTextDelegate,
 )
 
 from .base import FernView
+from ..utils import add_colored_action
 
 _MANDATORY_TYPES = {"id", "title"}
 _DROP_INDICATOR_COLOR = QColor("#4ade80")
@@ -132,10 +133,7 @@ class PagesView(FernView):
 
         table_view.doubleClicked.connect(self._on_row_activated)
         table_view.setEditTriggers(
-            table_view.editTriggers()
-            | table_view.EditTrigger.DoubleClicked
-            | table_view.EditTrigger.EditKeyPressed
-            | table_view.EditTrigger.SelectedClicked
+            table_view.EditTrigger.DoubleClicked | table_view.EditTrigger.EditKeyPressed
         )
         self._table.model().dataChanged.connect(self._on_table_data_changed)
         self._checkbox_delegate = CheckboxDelegate(self)
@@ -150,25 +148,12 @@ class PagesView(FernView):
         self._fill_table()
 
     def _on_options_clicked(self) -> None:
-        menu = QMenu(self)
-        menu.setObjectName("vaultContentOptionsMenu")
         callbacks = {
             "new_page": self.new_page_requested.emit,
             "add_property": self.add_property_requested.emit,
             "save_order": self.save_order_requested.emit,
         }
-        for item in get_pages_view_actions():
-            if item.is_separator:
-                menu.addSeparator()
-                continue
-            cb = callbacks.get(item.id)
-            if cb is None:
-                continue
-            if item.color:
-                add_colored_action(menu, item.label, item.color, cb)
-            else:
-                action = menu.addAction(item.label)
-                action.triggered.connect(cb)
+        menu = build_options_menu(self, PAGES_VIEW_ACTIONS, callbacks)
         btn = self._options_btn
         menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
@@ -367,11 +352,11 @@ class PagesView(FernView):
             row: dict[str, Any] = {}
             for prop in visible:
                 pid = self._prop_id(prop)
-                ptype = self._prop_type(prop)
+                property_type = self._prop_type(prop)
                 val = value_by_id.get(pid)
-                if ptype == "boolean":
+                if property_type == "boolean":
                     row[self._prop_name(prop)] = bool(val) if val is not None else False
-                elif ptype == "id":
+                elif property_type == "id":
                     row[self._prop_name(prop)] = str(val) if val is not None else ""
                 else:
                     row[self._prop_name(prop)] = str(val) if val is not None else ""
@@ -385,10 +370,15 @@ class PagesView(FernView):
         self._table.model().set_readonly_columns(readonly)
         table_view = self._table.view()
         for col, prop in enumerate(visible):
-            ptype = self._prop_type(prop)
+            property_type = self._prop_type(prop)
             pid = self._prop_id(prop)
-            if ptype == "boolean":
+            if property_type == "boolean":
                 table_view.setItemDelegateForColumn(col, self._checkbox_delegate)
+            elif property_type == "status":
+                choices = getattr(prop, "choices", None) or []
+                table_view.setItemDelegateForColumn(
+                    col, StatusComboDelegate(choices, table_view)
+                )
             elif pid in self._wrapped_property_ids:
                 table_view.setItemDelegateForColumn(col, self._wrapping_delegate)
             else:
@@ -410,14 +400,14 @@ class PagesView(FernView):
             return
         prop = visible[col]
         pid = self._prop_id(prop)
-        ptype = self._prop_type(prop)
-        if ptype in _MANDATORY_TYPES:
+        property_type = self._prop_type(prop)
+        if property_type in _MANDATORY_TYPES:
             return
         page = self._pages[row]
         model = self._table.model()
         idx = model.index(row, col)
         value = model.data(idx, Qt.ItemDataRole.EditRole)
-        if ptype == "boolean":
+        if property_type == "boolean":
             if not isinstance(value, bool):
                 return
         else:
@@ -435,8 +425,8 @@ class PagesView(FernView):
         visible = self._visible_schema()
         if col < 0 or col >= len(visible):
             return
-        ptype = self._prop_type(visible[col])
-        if ptype in _MANDATORY_TYPES:
+        property_type = self._prop_type(visible[col])
+        if property_type in _MANDATORY_TYPES:
             self.page_activated.emit(self._pages[row])
 
     # -- header context menu --
@@ -467,12 +457,12 @@ class PagesView(FernView):
             prop = visible[section]
             pid = self._prop_id(prop)
             mandatory = self._is_mandatory(prop)
-            ptype = self._prop_type(prop)
+            property_type = self._prop_type(prop)
 
             visible_ids = [self._prop_id(p) for p in visible]
             vis_idx = visible_ids.index(pid) if pid in visible_ids else -1
 
-            if ptype != "boolean":
+            if property_type != "boolean":
                 wrap_action = menu.addAction("Wrap content")
                 wrap_action.setCheckable(True)
                 wrap_action.setChecked(pid in self._wrapped_property_ids)

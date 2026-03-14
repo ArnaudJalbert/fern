@@ -171,8 +171,14 @@ class MainWindow(QMainWindow):
         self._show_vault(vault_path)
 
     def _show_vault(self, vault_path: Path) -> None:
-        output = self._controller.open_vault(vault_path)
-        if not output.success:
+        from fern.infrastructure.controller import VaultNotFoundError
+        from fern.infrastructure.pyside.components import show_error
+
+        try:
+            output = self._controller.open_vault(vault_path)
+        except VaultNotFoundError as e:
+            detail = f"{e.message}\n\nPath: {vault_path}" if vault_path else e.message
+            show_error(self, detail, title="Open vault")
             return
         current = self._stack.currentWidget()
         if isinstance(current, VaultView):
@@ -242,8 +248,14 @@ class MainWindow(QMainWindow):
             return
 
         see_action.setEnabled(True)
-        output = self._controller.open_vault_refresh(self._vault_path)
-        if output.success and output.databases:
+        try:
+            output = self._controller.open_vault_refresh(self._vault_path)
+        except Exception as e:
+            from fern.infrastructure.pyside.components import show_error
+
+            show_error(self, str(e))
+            return
+        if output.databases:
             self._databases_menu.addSeparator()
             for db in output.databases:
                 name = getattr(db, "name", str(db))

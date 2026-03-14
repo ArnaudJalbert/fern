@@ -8,7 +8,7 @@ from fern.domain.repositories.database_repository import DatabaseRepository
 
 
 class ListDatabasesUseCase:
-    """Use case: list all databases from the given repository."""
+    """List all databases from the given repository."""
 
     @dataclass(frozen=True)
     class Input:
@@ -32,22 +32,35 @@ class ListDatabasesUseCase:
         databases: tuple[ListDatabasesUseCase.DatabaseOutput, ...]
 
     def __init__(self, database_repository: DatabaseRepository) -> None:
+        """Initialize the use case with the database repository.
+
+        Args:
+            database_repository: The repository for listing databases.
+        """
         self._database_repository = database_repository
 
     def execute(self, input_data: Input) -> Output:
         """Return output DTO with all databases."""
-        db_list = sorted(
-            self._database_repository.list_all(),
-            key=lambda d: d.name,
+        # Load all databases and sort by name
+        all_databases = self._database_repository.list_all()
+        sorted_databases = sorted(
+            all_databases,
+            key=lambda database: database.name,
         )
+
+        # Build and return output DTO
         databases = tuple(
             self.DatabaseOutput(
-                name=db.name,
+                name=database.name,
                 pages=tuple(
-                    self.PageOutput(id=p.id, title=p.title, content=p.content)
-                    for p in db.pages
+                    self.PageOutput(
+                        id=page.id,
+                        title=page.title,
+                        content=page.content,
+                    )
+                    for page in database.pages
                 ),
             )
-            for db in db_list
+            for database in sorted_databases
         )
         return self.Output(databases=databases)
