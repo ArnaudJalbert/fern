@@ -72,7 +72,7 @@ class ControllerFactory:
             content: str,
             properties: list | None = None,
         ) -> None:
-            from fern.domain.entities.properties import Property, PropertyType
+            from fern.domain.entities.properties import PropertyType
             from fern.interface_adapters.repositories.markdown_page_repository import (
                 MarkdownPageRepository,
             )
@@ -85,14 +85,31 @@ class ControllerFactory:
                     property_id = getattr(page_property, "id", "")
                     if property_id in ("id", "title"):
                         continue
-                    property_type = getattr(page_property, "type", "string")
-                    if isinstance(property_type, str):
-                        property_type = PropertyType.from_key(property_type)
+                    if hasattr(page_property, "type_key") and callable(
+                        page_property.type_key
+                    ):
+                        property_type = PropertyType.from_key(page_property.type_key())
+                    else:
+                        property_type_raw = getattr(page_property, "type", None)
+                        if property_type_raw is None:
+                            raise ValueError(
+                                f"Property {property_id!r} has no type; cannot save page"
+                            )
+                        if isinstance(property_type_raw, str):
+                            type_key_str = property_type_raw
+                        elif hasattr(property_type_raw, "key") and callable(
+                            property_type_raw.key
+                        ):
+                            type_key_str = property_type_raw.key()
+                        else:
+                            raise ValueError(
+                                f"Property {property_id!r} has invalid type {property_type_raw!r}"
+                            )
+                        property_type = PropertyType.from_key(type_key_str)
                     domain_props.append(
-                        Property(
+                        property_type.create(
                             id=property_id,
                             name=getattr(page_property, "name", property_id),
-                            type=property_type,
                             value=getattr(page_property, "value", None),
                         )
                     )

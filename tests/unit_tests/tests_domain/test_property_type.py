@@ -1,5 +1,7 @@
 """Unit tests for PropertyType enum."""
 
+import pytest
+
 from fern.domain.entities import PropertyType
 
 
@@ -43,10 +45,21 @@ def test_property_type_from_key_status() -> None:
     assert PropertyType.from_key("status") == PropertyType.STATUS
 
 
-def test_property_type_from_key_unknown_defaults_to_boolean() -> None:
-    assert PropertyType.from_key("unknown") == PropertyType.BOOLEAN
-    assert PropertyType.from_key("") == PropertyType.BOOLEAN
-    assert PropertyType.from_key("  ") == PropertyType.BOOLEAN
+def test_property_type_from_key_unknown_raises() -> None:
+    with pytest.raises(ValueError, match="Invalid property type key 'unknown'"):
+        PropertyType.from_key("unknown")
+
+
+def test_property_type_from_key_empty_raises() -> None:
+    with pytest.raises(ValueError, match="cannot be empty"):
+        PropertyType.from_key("")
+    with pytest.raises(ValueError, match="cannot be empty"):
+        PropertyType.from_key("  ")
+
+
+def test_property_type_from_key_none_raises() -> None:
+    with pytest.raises(ValueError, match="required"):
+        PropertyType.from_key(None)
 
 
 def test_property_type_from_key_case_insensitive() -> None:
@@ -64,3 +77,16 @@ def test_property_type_user_creatable() -> None:
     assert PropertyType.ID not in creatable
     assert PropertyType.TITLE not in creatable
     assert len(creatable) == 3
+
+
+def test_property_type_create_returns_instance() -> None:
+    prop = PropertyType.BOOLEAN.create(id="p1", name="Done")
+    assert prop.id == "p1"
+    assert prop.name == "Done"
+    assert prop.type_key() == "boolean"
+
+
+def test_property_type_default_value_for_type() -> None:
+    assert PropertyType.BOOLEAN.default_value_for_type() is False
+    assert PropertyType.STRING.default_value_for_type() == ""
+    assert PropertyType.STATUS.default_value_for_type() == ""

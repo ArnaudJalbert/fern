@@ -3,42 +3,53 @@
 from fern.domain.entities import BooleanProperty
 
 
+def _make_boolean(**kwargs) -> BooleanProperty:
+    defaults = {"id": "test", "name": "Test"}
+    return BooleanProperty(**{**defaults, **kwargs})
+
+
 def test_boolean_property_type_key() -> None:
-    assert BooleanProperty.TYPE_KEY == "boolean"
+    assert _make_boolean().type_key() == "boolean"
 
 
 def test_boolean_property_default_value() -> None:
-    assert BooleanProperty.default_value() is False
+    assert _make_boolean().default_value() is False
 
 
 def test_boolean_property_validate_accepts_bool() -> None:
-    assert BooleanProperty.validate(True) is True
-    assert BooleanProperty.validate(False) is True
+    prop = _make_boolean()
+    assert prop.validate(True) is True
+    assert prop.validate(False) is True
 
 
 def test_boolean_property_validate_rejects_non_bool() -> None:
-    assert BooleanProperty.validate(1) is False
-    assert BooleanProperty.validate("true") is False
+    prop = _make_boolean()
+    assert prop.validate(1) is False
+    assert prop.validate("true") is False
 
 
 def test_boolean_property_coerce_bool_unchanged() -> None:
-    assert BooleanProperty.coerce(True) is True
-    assert BooleanProperty.coerce(False) is False
+    prop = _make_boolean()
+    assert prop.coerce(True) is True
+    assert prop.coerce(False) is False
 
 
 def test_boolean_property_coerce_string_true() -> None:
-    assert BooleanProperty.coerce("true") is True
-    assert BooleanProperty.coerce("TRUE") is True
-    assert BooleanProperty.coerce("1") is True
-    assert BooleanProperty.coerce("yes") is True
+    prop = _make_boolean()
+    assert prop.coerce("true") is True
+    assert prop.coerce("TRUE") is True
+    assert prop.coerce("1") is True
+    assert prop.coerce("yes") is True
 
 
 def test_boolean_property_coerce_string_false() -> None:
-    assert BooleanProperty.coerce("false") is False
-    assert BooleanProperty.coerce("0") is False
-    assert BooleanProperty.coerce("no") is False
+    prop = _make_boolean()
+    assert prop.coerce("false") is False
+    assert prop.coerce("0") is False
+    assert prop.coerce("no") is False
 
 
 def test_boolean_property_coerce_other_boolified() -> None:
-    assert BooleanProperty.coerce(1) is True
-    assert BooleanProperty.coerce(0) is False
+    prop = _make_boolean()
+    assert prop.coerce(1) is True
+    assert prop.coerce(0) is False

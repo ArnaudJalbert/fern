@@ -3,8 +3,9 @@
 from pathlib import Path
 
 import frontmatter
+import pytest
 
-from fern.domain.entities import Property, PropertyType
+from fern.domain.entities import BooleanProperty, StringProperty
 from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
 )
@@ -77,8 +78,8 @@ def test_update_with_properties(tmp_path: Path) -> None:
     repo = MarkdownPageRepository(tmp_path)
     repo.create("P", "")
     props = [
-        Property(id="p1", name="Done", type=PropertyType.BOOLEAN, value=True),
-        Property(id="p2", name="Note", type=PropertyType.STRING, value="hi"),
+        BooleanProperty(id="p1", name="Done", value=True),
+        StringProperty(id="p2", name="Note", value="hi"),
     ]
     repo.update(1, "P", "body", properties=props)
     page = repo.get_by_id(1)
@@ -152,6 +153,14 @@ def test_legacy_dict_properties(tmp_path: Path) -> None:
     prop_ids = {p.id for p in page.properties}
     assert "done" in prop_ids
     assert "note" in prop_ids
+
+
+def test_properties_missing_type_raises(tmp_path: Path) -> None:
+    content = "---\nid: 1\nproperties:\n- id: p1\n  name: Done\n---\nbody"
+    (tmp_path / "page.md").write_text(content, encoding="utf-8")
+    repo = MarkdownPageRepository(tmp_path)
+    with pytest.raises(ValueError, match="Property missing 'type'"):
+        repo.list_all()
 
 
 def test_properties_with_no_value_get_default(tmp_path: Path) -> None:

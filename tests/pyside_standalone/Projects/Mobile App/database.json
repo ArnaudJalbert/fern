@@ -19,11 +19,6 @@
       "id": "allo",
       "name": "Allo",
       "type": "boolean"
-    },
-    {
-      "id": "fast",
-      "name": "fast",
-      "type": "boolean"
     }
   ],
   "propertyOrder": [
@@ -32,7 +27,6 @@
     "platform",
     "done",
     "id",
-    "allo",
-    "fast"
+    "allo"
   ]
 }

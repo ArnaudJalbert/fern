@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from fern.application.dtos import AddPagePropertyInputDTO
 from fern.application.errors import PageNotFoundError, PropertyAlreadyExistsOnPageError
 from fern.application.use_cases.add_page_property import AddPagePropertyUseCase
-from fern.domain.entities import Page, Property, PropertyType
+from fern.domain.entities import Page, StringProperty
 
 
 def test_add_page_property_success() -> None:
@@ -47,7 +47,7 @@ def test_add_page_property_page_not_found_fails() -> None:
 
 
 def test_add_page_property_duplicate_id_on_page_fails() -> None:
-    existing = Property(id="status", name="Status", type=PropertyType.STRING, value="")
+    existing = StringProperty(id="status", name="Status", value="")
     page = Page(id=1, title="P", content="", properties=[existing])
     page_repo = MagicMock()
     page_repo.get_by_id.return_value = page

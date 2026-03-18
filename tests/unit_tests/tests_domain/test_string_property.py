@@ -3,32 +3,39 @@
 from fern.domain.entities import StringProperty
 
 
+def _make_string(**kwargs) -> StringProperty:
+    defaults = {"id": "test", "name": "Test"}
+    return StringProperty(**{**defaults, **kwargs})
+
+
 def test_string_property_type_key() -> None:
-    assert StringProperty.TYPE_KEY == "string"
+    assert _make_string().type_key() == "string"
 
 
 def test_string_property_default_value() -> None:
-    assert StringProperty.default_value() == ""
+    assert _make_string().default_value() == ""
 
 
 def test_string_property_validate_accepts_str() -> None:
-    assert StringProperty.validate("hello") is True
-    assert StringProperty.validate("") is True
+    prop = _make_string()
+    assert prop.validate("hello") is True
+    assert prop.validate("") is True
 
 
 def test_string_property_validate_rejects_non_str() -> None:
-    assert StringProperty.validate(123) is False
-    assert StringProperty.validate(True) is False
-    assert StringProperty.validate(None) is False
+    prop = _make_string()
+    assert prop.validate(123) is False
+    assert prop.validate(True) is False
+    assert prop.validate(None) is False
 
 
 def test_string_property_coerce_none_to_empty() -> None:
-    assert StringProperty.coerce(None) == ""
+    assert _make_string().coerce(None) == ""
 
 
 def test_string_property_coerce_str_unchanged() -> None:
-    assert StringProperty.coerce("hi") == "hi"
+    assert _make_string().coerce("hi") == "hi"
 
 
 def test_string_property_coerce_non_str_converted() -> None:
-    assert StringProperty.coerce(42) == "42"
+    assert _make_string().coerce(42) == "42"

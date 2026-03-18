@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from fern.domain.entities import Property, PropertyType
+from fern.domain.entities import (
+    BooleanProperty,
+    IdProperty,
+    StatusProperty,
+    StringProperty,
+    TitleProperty,
+)
 from fern.interface_adapters.repositories.vault_database_repository import (
     DATABASE_MARKER,
     VaultDatabaseRepository,
@@ -34,7 +40,7 @@ def test_ensure_mandatory_properties_adds_id_and_title() -> None:
 
 
 def test_ensure_mandatory_properties_preserves_existing() -> None:
-    user_prop = Property(id="done", name="Done", type=PropertyType.BOOLEAN)
+    user_prop = BooleanProperty(id="done", name="Done")
     props, order = ensure_mandatory_properties([user_prop], ["done"])
     assert len(props) == 3
     assert props[0].id == "id"
@@ -44,10 +50,8 @@ def test_ensure_mandatory_properties_preserves_existing() -> None:
 
 
 def test_ensure_mandatory_properties_no_duplicate_if_present() -> None:
-    id_prop = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-    title_prop = Property(
-        id="title", name="Title", type=PropertyType.TITLE, mandatory=True
-    )
+    id_prop = IdProperty(id="id", name="ID")
+    title_prop = TitleProperty(id="title", name="Title")
     props, order = ensure_mandatory_properties([id_prop, title_prop], ["id", "title"])
     assert len(props) == 2
     assert order == ["id", "title"]
@@ -60,18 +64,58 @@ def test_property_from_dict_boolean() -> None:
     p = _property_from_dict({"id": "p1", "name": "Done", "type": "boolean"})
     assert p.id == "p1"
     assert p.name == "Done"
-    assert p.type == PropertyType.BOOLEAN
+    assert p.type_key() == "boolean"
 
 
-def test_property_from_dict_defaults_to_boolean() -> None:
-    p = _property_from_dict({"id": "p1", "name": "X"})
-    assert p.type == PropertyType.BOOLEAN
+def test_property_from_dict_missing_type_raises() -> None:
+    with pytest.raises(ValueError, match="missing 'type'"):
+        _property_from_dict({"id": "p1", "name": "X"})
 
 
 def test_property_to_dict() -> None:
-    p = Property(id="p1", name="Done", type=PropertyType.BOOLEAN)
+    p = BooleanProperty(id="p1", name="Done")
     d = _property_to_dict(p)
     assert d == {"id": "p1", "name": "Done", "type": "boolean"}
+
+
+def test_property_from_dict_status_with_choices() -> None:
+    raw = {
+        "id": "status",
+        "name": "Status",
+        "type": "status",
+        "choices": [
+            {"name": "Done", "category": "c1", "color": "#0f0"},
+            {"name": "Todo", "category": "c1", "color": "#f00"},
+        ],
+    }
+    prop = _property_from_dict(raw)
+    assert isinstance(prop, StatusProperty)
+    assert prop.id == "status"
+    assert prop.name == "Status"
+    assert len(prop.choices) == 2
+    assert prop.choices[0].name == "Done"
+    assert prop.choices[1].name == "Todo"
+
+
+def test_property_from_dict_status_empty_choices() -> None:
+    raw = {"id": "status", "name": "Status", "type": "status"}
+    prop = _property_from_dict(raw)
+    assert isinstance(prop, StatusProperty)
+    assert prop.choices == []
+
+
+def test_property_to_dict_status_with_choices() -> None:
+    from fern.domain.entities import Choice
+    from fern.domain.entities.properties.choice_category import ChoiceCategory
+
+    choice = Choice(name="Done", category=ChoiceCategory(name="c1"), color="#0f0")
+    prop = StatusProperty(id="p1", name="Status", choices=[choice])
+    d = _property_to_dict(prop)
+    assert d["type"] == "status"
+    assert "choices" in d
+    assert len(d["choices"]) == 1
+    assert d["choices"][0]["name"] == "Done"
+    assert d["choices"][0]["color"] == "#0f0"
 
 
 # --- _read_schema ---
@@ -102,9 +146,9 @@ def test_read_schema_valid(tmp_path: Path) -> None:
     props, order = _read_schema(tmp_path)
     assert len(props) == 2
     assert props[0].id == "p1"
-    assert props[0].type == PropertyType.STRING
+    assert props[0].type_key() == "string"
     assert props[1].id == "p2"
-    assert props[1].type == PropertyType.BOOLEAN
+    assert props[1].type_key() == "boolean"
     assert order == ["p2", "p1"]
 
 
@@ -142,7 +186,7 @@ def test_read_schema_missing_keys(tmp_path: Path) -> None:
 
 def test_write_schema_creates_dir_and_file(tmp_path: Path) -> None:
     db_dir = tmp_path / "newdb"
-    prop = Property(id="p1", name="Done", type=PropertyType.BOOLEAN)
+    prop = BooleanProperty(id="p1", name="Done")
     _write_schema(db_dir, [prop], ["p1"])
     assert db_dir.is_dir()
     data = json.loads((db_dir / DATABASE_MARKER).read_text(encoding="utf-8"))
@@ -151,8 +195,8 @@ def test_write_schema_creates_dir_and_file(tmp_path: Path) -> None:
 
 
 def test_write_schema_skips_mandatory_properties(tmp_path: Path) -> None:
-    id_prop = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-    user_prop = Property(id="done", name="Done", type=PropertyType.BOOLEAN)
+    id_prop = IdProperty(id="id", name="ID")
+    user_prop = BooleanProperty(id="done", name="Done")
     _write_schema(tmp_path, [id_prop, user_prop], ["id", "done"])
     data = json.loads((tmp_path / DATABASE_MARKER).read_text(encoding="utf-8"))
     assert len(data["properties"]) == 1
@@ -162,8 +206,8 @@ def test_write_schema_skips_mandatory_properties(tmp_path: Path) -> None:
 
 def test_write_then_read_roundtrip(tmp_path: Path) -> None:
     props = [
-        Property(id="a", name="A", type=PropertyType.STRING),
-        Property(id="b", name="B", type=PropertyType.BOOLEAN),
+        StringProperty(id="a", name="A"),
+        BooleanProperty(id="b", name="B"),
     ]
     _write_schema(tmp_path, props, ["b", "a"])
     loaded_props, loaded_order = _read_schema(tmp_path)
@@ -427,7 +471,7 @@ def test_save_schema_writes_manifest(tmp_path: Path) -> None:
     db_dir.mkdir()
     (db_dir / DATABASE_MARKER).write_text("{}", encoding="utf-8")
     repo = VaultDatabaseRepository(tmp_path)
-    prop = Property(id="p1", name="Done", type=PropertyType.BOOLEAN)
+    prop = BooleanProperty(id="p1", name="Done")
     repo.save_schema("Notes", [prop], ["p1"])
     data = json.loads((db_dir / DATABASE_MARKER).read_text(encoding="utf-8"))
     assert data["properties"][0]["id"] == "p1"
@@ -455,7 +499,7 @@ def test_save_then_get_schema_roundtrip(tmp_path: Path) -> None:
     db_dir.mkdir()
     (db_dir / DATABASE_MARKER).write_text("{}", encoding="utf-8")
     repo = VaultDatabaseRepository(tmp_path)
-    prop = Property(id="status", name="Status", type=PropertyType.STRING)
+    prop = StringProperty(id="status", name="Status")
     repo.save_schema("DB", [prop], ["id", "title", "status"])
     props, order = repo.get_schema("DB")
     user_props = [p for p in props if not p.mandatory]
