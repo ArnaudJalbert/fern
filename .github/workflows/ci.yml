@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write # Required for creating releases
-  packages: write # Required for publishing to GitHub Packages
 
 jobs:
   version-and-changelog:
@@ -115,28 +114,6 @@ jobs:
         with:
           name: dist
           path: dist/
-
-  publish-github-packages:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs: build-package
-    steps:
-      - name: Download package artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Install uv
-        run: pip install uv
-      - name: List downloaded package artifacts
-        run: ls -la dist || true
-      - name: Publish to GitHub Packages
-        run: |
-          uv publish --no-attestations --publish-url "https://upload.pypi.github.com/legacy/" --username "${{ github.repository_owner }}" --password "${{ secrets.GITHUB_TOKEN }}" dist/*
 
   publish-pypi:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
