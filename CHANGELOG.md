@@ -5,6 +5,13 @@ All notable changes to Fern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-03-18
+
+### Fixed
+
+- GitHub Actions workflow: Remove GitHub Packages publishing job so GitHub Pages docs deployment runs independently
+- GitHub Actions workflow: Docs continue to deploy via MkDocs build + `peaceiris/actions-gh-pages`
+
 ## [0.6.3] - 2026-03-18
 
 ### Fixed
