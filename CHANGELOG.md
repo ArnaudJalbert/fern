@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- GitHub Actions workflow: Remove GitHub Packages publishing job so GitHub Pages docs deployment runs independently
-- GitHub Actions workflow: Docs continue to deploy via MkDocs build + `peaceiris/actions-gh-pages`
+- GitHub Actions workflow: Fix GitHub Packages publishing 404 by using the correct publish endpoint
+- GitHub Actions workflow: Ensure GitHub Pages docs deployment is not blocked by package publishing failures
 
 ## [0.6.3] - 2026-03-18
 
