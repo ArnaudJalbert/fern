@@ -5,7 +5,7 @@ All notable changes to Fern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-03-17
 
 ### Added
 
@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **PropertyType.from_key**: Now raises clear `ValueError` for missing or unknown type keys instead of silently defaulting to boolean.
 - **Repository deserialization**: Added required `type` field validation; raises `ValueError` if missing from property definition.
+
+## [Unreleased]
+
+- (Nothing yet.)
 
 ## [0.5.0] - 2026-03-14
 
@@ -142,7 +146,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit/Add property dialog: capture name and type before dialog is destroyed to avoid deleted widget access.
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
-[Unreleased]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.5.0...HEAD
+[Unreleased]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.6.0...HEAD
+[0.6.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.5.0...v0.6.0
 [0.5.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.4.0...v0.5.0
 [0.4.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.3.0...v0.4.0
 [0.3.0]: https://gitlab.com/arnaudjalbert/fern/-/tags/v0.3.0
