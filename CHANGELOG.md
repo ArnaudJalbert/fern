@@ -149,6 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
 [Unreleased]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.6.1...HEAD
+[0.6.1]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.6.0...0.6.1
 [0.6.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.5.0...v0.6.0
 [0.5.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.4.0...v0.5.0
 [0.4.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.3.0...v0.4.0
