@@ -5,6 +5,13 @@ All notable changes to Fern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-03-18
+
+### Fixed
+
+- GitHub Actions workflow: Fix GitHub Packages publishing 404 by using the correct publish endpoint
+- GitHub Actions workflow: Ensure GitHub Pages docs deployment is not blocked by package publishing failures
+
 ## [0.6.3] - 2026-03-18
 
 ### Fixed
