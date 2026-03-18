@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+from .property import Property
 
-class TitleProperty:
-    """Implements the page title property: string, always present."""
 
-    TYPE_KEY = "title"
+@dataclass(kw_only=True)
+class TitleProperty(Property):
+    """Page title property: string, always present, mandatory."""
 
-    @classmethod
-    def default_value(cls) -> str:
+    value: Any = ""
+    mandatory: bool = True
+
+    def type_key(self) -> str:
+        return "title"
+
+    def default_value(self) -> str:
         return ""
 
-    @classmethod
-    def validate(cls, value: Any) -> bool:
+    def validate(self, value: Any) -> bool:
         return isinstance(value, str)
 
-    @classmethod
-    def coerce(cls, value: Any) -> str:
+    def coerce(self, value: Any) -> str:
         if value is None:
             return ""
         return str(value)

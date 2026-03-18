@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fern.application.errors import VaultNotFoundError
-from fern.domain.entities import Page
+from fern.domain.entities import Page, StatusProperty
 from fern.domain.repositories.vault_repository import VaultRepository
 
 
@@ -120,12 +120,10 @@ class OpenVaultUseCase:
         Raises:
             VaultNotFoundError: If the vault path is invalid or not found.
         """
-        # Load the vault or raise if not found
         vault = self._vault_repository.get()
         if vault is None:
             raise VaultNotFoundError()
 
-        # Build output DTO from vault
         databases = tuple(
             self._database_to_output(database) for database in vault.databases
         )
@@ -157,41 +155,41 @@ class OpenVaultUseCase:
         | "OpenVaultUseCase.StatusPropertyOutput"
     ):
         """Build the type-specific output DTO for a schema property."""
-        type_key = schema_property.type.key()
-        if type_key == "id":
+        key = schema_property.type_key()
+        if key == "id":
             return self.IdPropertyOutput(
                 id=schema_property.id,
                 name=schema_property.name,
                 mandatory=schema_property.mandatory,
             )
-        if type_key == "title":
+        if key == "title":
             return self.TitlePropertyOutput(
                 id=schema_property.id,
                 name=schema_property.name,
                 mandatory=schema_property.mandatory,
             )
-        if type_key == "boolean":
+        if key == "boolean":
             return self.BooleanPropertyOutput(
                 id=schema_property.id,
                 name=schema_property.name,
                 mandatory=schema_property.mandatory,
             )
-        if type_key == "string":
+        if key == "string":
             return self.StringPropertyOutput(
                 id=schema_property.id,
                 name=schema_property.name,
                 mandatory=schema_property.mandatory,
             )
-        # status
-        raw = getattr(schema_property, "choices", None) or []
-        choices_out = tuple(
-            self.ChoiceOutput(
-                name=choice.name,
-                category=choice.category,
-                color=choice.color,
+        choices_out = ()
+        if isinstance(schema_property, StatusProperty):
+            choices_out = tuple(
+                self.ChoiceOutput(
+                    name=choice.name,
+                    category=choice.category,
+                    color=choice.color,
+                )
+                for choice in schema_property.choices
             )
-            for choice in raw
-        )
         return self.StatusPropertyOutput(
             id=schema_property.id,
             name=schema_property.name,
@@ -242,7 +240,7 @@ class OpenVaultUseCase:
             self.PagePropertyOutput(
                 id=page_property.id,
                 name=page_property.name,
-                type=page_property.type.key(),
+                type=page_property.type_key(),
                 value=page_property.value,
             )
             for page_property in page.properties

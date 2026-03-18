@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- (Nothing yet.)
+### Added
+
+- **Color class**: New `Color` value object for hex color values used in status choices.
+- **ChoiceCategory class**: New `ChoiceCategory` with name and optional color for categorizing status choices.
+- **Comprehensive error tests**: New `test_errors.py` covering all application error constructors and messages.
+
+### Changed
+
+- **Property hierarchy unification**: Refactored property system from strategy pattern to proper class hierarchy:
+  - `Property` is now an abstract base class with abstract methods: `type_key()`, `default_value()`, `validate()`, `coerce()`.
+  - All concrete property types (`BooleanProperty`, `StringProperty`, `StatusProperty`, `IdProperty`, `TitleProperty`) inherit from `Property` and implement instance methods instead of class methods.
+  - Removed `type` and `choices` fields from base `Property`; `choices` now only on `StatusProperty`.
+  - `mandatory` flag moved to base class with appropriate defaults per subclass.
+- **PropertyType enum**: Redesigned to map type keys to concrete classes via `(key, class)` tuples. Added factory method `create(**kwargs)` and `default_value_for_type()`. `from_key()` now raises `ValueError` for invalid keys instead of defaulting to `BOOLEAN`.
+- **Application use cases**: Updated all use cases (`AddProperty`, `UpdateProperty`, `AddPageProperty`, `ApplyPropertyToPages`, `UpdatePageProperty`, `OpenVault`) to use new property API:
+  - Direct construction of concrete types (e.g., `StatusProperty(id=..., choices=...)`) instead of generic `Property(...)`.
+  - Call `property.coerce()` directly instead of via `property.type.value.coerce()`.
+  - Use `property.type_key()` instead of `property.type.key()`.
+- **Repositories**: Updated `VaultDatabaseRepository` and `MarkdownPageRepository` to instantiate concrete property types and use new API. Added stricter validation for missing `type` fields.
+- **Controller**: `default_value_for_type()` now uses `PropertyType.default_value_for_type()`.
+- **DTOs**: Simplified `PropertyInputDTO` hierarchy - base class holds `property_id` and `name`; specific DTOs inherit without redefining fields.
+- **Tests**: Extensive updates across all test suites to reflect new property architecture. Added `test_property_factory.py` for factory functions. Updated all property, repository, and use case tests.
+
+### Fixed
+
+- **PropertyType.from_key**: Now raises clear `ValueError` for missing or unknown type keys instead of silently defaulting to boolean.
+- **Repository deserialization**: Added required `type` field validation; raises `ValueError` if missing from property definition.
 
 ## [0.5.0] - 2026-03-14
 

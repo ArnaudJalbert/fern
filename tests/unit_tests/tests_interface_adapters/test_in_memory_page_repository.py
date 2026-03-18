@@ -1,6 +1,6 @@
 """Unit tests for InMemoryPageRepository. No mocks; pure in-memory behavior."""
 
-from fern.domain.entities import Page, Property, PropertyType
+from fern.domain.entities import BooleanProperty, Page
 from fern.interface_adapters.repositories.in_memory_page_repository import (
     InMemoryPageRepository,
 )
@@ -62,7 +62,7 @@ def test_update_existing_page() -> None:
 
 def test_update_with_properties() -> None:
     repo = InMemoryPageRepository()
-    prop = Property(id="p1", name="Done", type=PropertyType.BOOLEAN, value=True)
+    prop = BooleanProperty(id="p1", name="Done", value=True)
     repo.create("T", "")
     repo.update(1, "T", "", properties=[prop])
     page = repo.get_by_id(1)

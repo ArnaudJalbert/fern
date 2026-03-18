@@ -3,13 +3,13 @@
 from unittest.mock import MagicMock
 
 from fern.application.use_cases.update_property_order import UpdatePropertyOrderUseCase
-from fern.domain.entities import Property, PropertyType
+from fern.domain.entities import BooleanProperty
 
 
 def test_update_property_order_success() -> None:
     db_repo = MagicMock()
     db_repo.get_schema.return_value = (
-        [Property(id="p1", name="A", type=PropertyType.BOOLEAN)],
+        [BooleanProperty(id="p1", name="A")],
         ["p1"],
     )
 

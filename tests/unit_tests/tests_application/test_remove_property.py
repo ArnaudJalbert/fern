@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 
 from fern.application.errors import PropertyNotFoundError
 from fern.application.use_cases.remove_property import RemovePropertyUseCase
-from fern.domain.entities import Page, Property, PropertyType
+from fern.domain.entities import BooleanProperty, Page
 
 
 def test_remove_property_success() -> None:
-    prop = Property(id="p1", name="X", type=PropertyType.BOOLEAN)
+    prop = BooleanProperty(id="p1", name="X")
     db_repo = MagicMock()
     db_repo.get_schema.return_value = ([prop], ["p1"])
     page_repo = MagicMock()
@@ -43,10 +43,10 @@ def test_remove_property_not_found_fails() -> None:
 
 
 def test_remove_property_updates_pages() -> None:
-    prop = Property(id="p1", name="X", type=PropertyType.BOOLEAN)
+    prop = BooleanProperty(id="p1", name="X")
     db_repo = MagicMock()
     db_repo.get_schema.return_value = ([prop], ["p1"])
-    page_prop = Property(id="p1", name="X", type=PropertyType.BOOLEAN, value=True)
+    page_prop = BooleanProperty(id="p1", name="X", value=True)
     page = Page(id=1, title="T", content="", properties=[page_prop])
     page_repo = MagicMock()
     page_repo.list_all.return_value = [page]

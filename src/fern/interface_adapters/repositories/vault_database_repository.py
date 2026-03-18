@@ -9,7 +9,15 @@ import json
 import os
 from pathlib import Path
 
-from fern.domain.entities import Choice, Database, Property, PropertyType
+from fern.domain.entities import (
+    Choice,
+    Database,
+    IdProperty,
+    Property,
+    PropertyType,
+    StatusProperty,
+    TitleProperty,
+)
 from fern.domain.repositories.database_repository import DatabaseRepository
 from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
@@ -17,47 +25,54 @@ from fern.interface_adapters.repositories.markdown_page_repository import (
 
 DATABASE_MARKER = "database.json"
 
-ID_PROPERTY = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-TITLE_PROPERTY = Property(
-    id="title", name="Title", type=PropertyType.TITLE, mandatory=True
-)
+ID_PROPERTY = IdProperty(id="id", name="ID")
+TITLE_PROPERTY = TitleProperty(id="title", name="Title")
 
 
-def _property_from_dict(d: dict) -> Property:
-    raw = d.get("type", "boolean")
-    property_type = PropertyType.from_key(raw)
-    choices: list[Choice] | None = None
+def _property_from_dict(raw_dict: dict) -> Property:
+    raw_type = raw_dict.get("type")
+    if raw_type is None:
+        raise ValueError(
+            f"Property definition missing 'type' (id={raw_dict.get('id', '?')})"
+        )
+    property_type = PropertyType.from_key(str(raw_type))
+
     if property_type == PropertyType.STATUS:
-        raw_choices = d.get("choices")
+        raw_choices = raw_dict.get("choices")
+        choices: list[Choice] = []
         if isinstance(raw_choices, list):
             choices = [
                 Choice(
-                    name=str(c.get("name", "")),
-                    category=str(c.get("category", "")),
-                    color=str(c.get("color", "")),
+                    name=str(choice_dict.get("name", "")),
+                    category=str(choice_dict.get("category", "")),
+                    color=str(choice_dict.get("color", "")),
                 )
-                for c in raw_choices
-                if isinstance(c, dict)
+                for choice_dict in raw_choices
+                if isinstance(choice_dict, dict)
             ]
-        if choices is None:
-            choices = []
-    return Property(
-        id=str(d["id"]),
-        name=str(d["name"]),
-        type=property_type,
-        choices=choices,
+        return StatusProperty(
+            id=str(raw_dict["id"]),
+            name=str(raw_dict["name"]),
+            choices=choices,
+        )
+
+    return property_type.create(
+        id=str(raw_dict["id"]),
+        name=str(raw_dict["name"]),
     )
 
 
-def _property_to_dict(p: Property) -> dict:
-    out: dict = {"id": p.id, "name": p.name, "type": p.type.key()}
-    if p.type == PropertyType.STATUS:
-        choices = getattr(p, "choices", None)
-        if choices:
-            out["choices"] = [
-                {"name": c.name, "category": c.category, "color": c.color}
-                for c in choices
-            ]
+def _property_to_dict(schema_property: Property) -> dict:
+    out: dict = {
+        "id": schema_property.id,
+        "name": schema_property.name,
+        "type": schema_property.type_key(),
+    }
+    if isinstance(schema_property, StatusProperty) and schema_property.choices:
+        out["choices"] = [
+            {"name": choice.name, "category": choice.category, "color": choice.color}
+            for choice in schema_property.choices
+        ]
     return out
 
 
@@ -94,11 +109,13 @@ def _read_schema(db_dir: Path) -> tuple[list[Property], list[str]]:
     props = data.get("properties") or []
     order = data.get("propertyOrder") or []
     if isinstance(order, list):
-        order = [str(x) for x in order]
+        order = [str(entry) for entry in order]
     else:
         order = []
     properties = [
-        _property_from_dict(p) for p in props if isinstance(p, dict) and "id" in p
+        _property_from_dict(raw_property)
+        for raw_property in props
+        if isinstance(raw_property, dict) and "id" in raw_property
     ]
     return (properties, order)
 
@@ -111,19 +128,19 @@ def _write_schema(
     dir_path.mkdir(parents=True, exist_ok=True)
     file_path = dir_path / DATABASE_MARKER
     user_props = [
-        page_property
-        for page_property in properties
-        if not getattr(page_property, "mandatory", False)
+        page_property for page_property in properties if not page_property.mandatory
     ]
     data = {
-        "properties": [_property_to_dict(p) for p in user_props],
+        "properties": [
+            _property_to_dict(schema_property) for schema_property in user_props
+        ],
         "propertyOrder": list(property_order),
     }
     raw = json.dumps(data, indent=2)
-    with file_path.open("w", encoding="utf-8") as f:
-        f.write(raw)
-        f.flush()
-        os.fsync(f.fileno())
+    with file_path.open("w", encoding="utf-8") as file_handle:
+        file_handle.write(raw)
+        file_handle.flush()
+        os.fsync(file_handle.fileno())
 
 
 def is_database_folder(folder: Path) -> bool:
@@ -182,7 +199,6 @@ class VaultDatabaseRepository(DatabaseRepository):
         candidate = self._vault_path / database_name
         if candidate.is_dir() and is_database_folder(candidate):
             return candidate
-        # Case-insensitive fallback: scan all databases
         target = database_name.lower()
         for db_path in find_databases(self._vault_path):
             name = database_name_from_path(self._vault_path, db_path)

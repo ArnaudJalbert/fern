@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from fern.application.dtos import UpdatePropertyInputDTO
 from fern.application.errors import PropertyNotFoundError
-from fern.domain.entities import Property, PropertyType
+from fern.application.property_factory import (
+    build_choices_from_dtos,
+    build_property_from_type,
+)
+from fern.domain.entities import (
+    Choice,
+    Property,
+    PropertyType,
+    StatusProperty,
+)
 from fern.domain.repositories.database_repository import DatabaseRepository
 from fern.domain.repositories.page_repository import PageRepository
 
@@ -32,7 +41,6 @@ class UpdatePropertyUseCase:
         Raises:
             PropertyNotFoundError: If the property is not in the schema.
         """
-        # Load current schema and locate the property
         properties, property_order = self._database_repository.get_schema(
             input_data.database_name
         )
@@ -48,21 +56,12 @@ class UpdatePropertyUseCase:
 
         old_property = properties[property_index]
 
-        # Resolve new name, type and choices from input or keep existing
         new_name = self._resolve_new_name(input_data, old_property)
         new_type = self._resolve_new_type(input_data, old_property)
-        new_choices = self._resolve_new_choices(
-            input_data,
-            old_property,
-            new_type,
-        )
+        new_choices = self._resolve_new_choices(input_data, old_property, new_type)
 
-        # Persist updated schema
-        updated_property = Property(
-            id=old_property.id,
-            name=new_name,
-            type=new_type,
-            choices=new_choices,
+        updated_property = build_property_from_type(
+            old_property.id, new_name, new_type, new_choices
         )
         updated_properties = list(properties)
         updated_properties[property_index] = updated_property
@@ -72,7 +71,6 @@ class UpdatePropertyUseCase:
             list(property_order),
         )
 
-        # Update every page: coerce values for the updated property
         for page in self._page_repository.list_all():
             properties_for_page = self._updated_properties_for_page(
                 page,
@@ -116,7 +114,7 @@ class UpdatePropertyUseCase:
     ) -> PropertyType:
         """Return the new type from input or keep the old one."""
         if input_data.new_type_key is None or not input_data.new_type_key.strip():
-            return old_property.type
+            return PropertyType.from_key(old_property.type_key())
         return PropertyType.from_key(input_data.new_type_key)
 
     @staticmethod
@@ -124,21 +122,12 @@ class UpdatePropertyUseCase:
         input_data: UpdatePropertyInputDTO,
         old_property: Property,
         new_type: PropertyType,
-    ) -> list | None:
+    ) -> list[Choice] | None:
         """Return the new choices from input, keep existing for status, or None."""
         if new_type == PropertyType.STATUS and input_data.new_choices is not None:
-            from fern.domain.entities import Choice
-
-            return [
-                Choice(
-                    name=choice_dto.name,
-                    category=choice_dto.category,
-                    color=choice_dto.color,
-                )
-                for choice_dto in input_data.new_choices
-            ]
-        if new_type == PropertyType.STATUS and old_property.type == PropertyType.STATUS:
-            return list(getattr(old_property, "choices", None) or [])
+            return build_choices_from_dtos(input_data.new_choices)
+        if new_type == PropertyType.STATUS and isinstance(old_property, StatusProperty):
+            return list(old_property.choices)
         return None
 
     @staticmethod
@@ -155,19 +144,13 @@ class UpdatePropertyUseCase:
                 result.append(page_property)
                 continue
             raw_value = page_property.value
-            value = (
-                new_type.value.coerce(raw_value)
-                if hasattr(new_type.value, "coerce")
-                else raw_value
+            new_property = new_type.create(
+                id=page_property.id,
+                name=new_name,
             )
-            if value is None and hasattr(new_type.value, "default_value"):
-                value = new_type.value.default_value()
-            result.append(
-                Property(
-                    id=page_property.id,
-                    name=new_name,
-                    type=new_type,
-                    value=value,
-                )
-            )
+            value = new_property.coerce(raw_value)
+            if value is None:
+                value = new_property.default_value()
+            new_property.value = value
+            result.append(new_property)
         return result

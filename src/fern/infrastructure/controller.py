@@ -1,7 +1,7 @@
 """Application controller: dependencies are injected; exposes a single API for the UI.
 
-Re-exports application error types so infrastructure (PySide) never imports
-directly from ``fern.application``. Use::
+The controller catches application-layer errors and re-raises its own errors so
+the UI depends only on the controller layer. Use::
 
     from fern.infrastructure.controller import VaultNotFoundError, ...
 """
@@ -10,10 +10,71 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Protocol
 
+from fern.application.errors import (
+    PageNotFoundError as _AppPageNotFoundError,
+    PropertyAlreadyExistsError as _AppPropertyAlreadyExistsError,
+    PropertyAlreadyExistsOnPageError as _AppPropertyAlreadyExistsOnPageError,
+    PropertyNotFoundError as _AppPropertyNotFoundError,
+    PropertyNotFoundOnPageError as _AppPropertyNotFoundOnPageError,
+    VaultNotFoundError as _AppVaultNotFoundError,
+)
 from fern.application.use_cases.create_page import CreatePageUseCase
 from fern.application.use_cases.open_vault import OpenVaultUseCase
 from fern.domain.entities import PropertyType as _PropertyType
 
+
+# --- Controller-layer errors (UI imports these, not application errors) ---
+
+
+class VaultNotFoundError(Exception):
+    """Raised when the vault path is invalid or the vault cannot be opened."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class PageNotFoundError(Exception):
+    """Raised when a page with the given id does not exist."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class PropertyNotFoundError(Exception):
+    """Raised when a property with the given id is not in the schema."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class PropertyAlreadyExistsError(Exception):
+    """Raised when adding a property whose id already exists in the schema."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class PropertyAlreadyExistsOnPageError(Exception):
+    """Raised when adding a property to a page that already has that property id."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class PropertyNotFoundOnPageError(Exception):
+    """Raised when updating a property that does not exist on the given page."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+# --- Output types and helpers ---
 
 VaultOutput = OpenVaultUseCase.Output
 ChoiceOutput = OpenVaultUseCase.ChoiceOutput
@@ -21,7 +82,7 @@ ChoiceOutput = OpenVaultUseCase.ChoiceOutput
 
 def default_value_for_type(type_key: str) -> object:
     """Return the default value for a property type key (e.g. False for boolean)."""
-    return _PropertyType.from_key(type_key).value.default_value()
+    return _PropertyType.from_key(type_key).default_value_for_type()
 
 
 def user_creatable_type_keys() -> list[str]:
@@ -107,7 +168,10 @@ class AppController:
 
     def open_vault(self, path: Path) -> OpenVaultUseCase.Output:
         """Open the vault at the given path; returns vault data or raises VaultNotFoundError."""
-        return self._open_vault(path)
+        try:
+            return self._open_vault(path)
+        except _AppVaultNotFoundError as error:
+            raise VaultNotFoundError(str(error)) from error
 
     def create_vault(self, parent_dir: Path, name: str) -> Path | None:
         """Create a new vault folder under parent_dir; returns vault path or None if creation failed."""
@@ -164,7 +228,10 @@ class AppController:
         page_id: int,
     ) -> None:
         """Remove the page from the given database. Raises PageNotFoundError if not found."""
-        return self._delete_page(vault_path, database_name, page_id)
+        try:
+            return self._delete_page(vault_path, database_name, page_id)
+        except _AppPageNotFoundError as error:
+            raise PageNotFoundError(str(error)) from error
 
     def add_property(
         self,
@@ -176,14 +243,17 @@ class AppController:
         choices: list | None = None,
     ) -> None:
         """Add a property to the schema and apply it to all pages. Raises PropertyAlreadyExistsError if id exists."""
-        return self._add_property(
-            vault_path,
-            database_name,
-            property_id,
-            name,
-            property_type,
-            choices,
-        )
+        try:
+            return self._add_property(
+                vault_path,
+                database_name,
+                property_id,
+                name,
+                property_type,
+                choices,
+            )
+        except _AppPropertyAlreadyExistsError as error:
+            raise PropertyAlreadyExistsError(str(error)) from error
 
     def add_page_property(
         self,
@@ -195,9 +265,14 @@ class AppController:
         property_type: str,
     ) -> None:
         """Add a property to a single page only. Raises PageNotFoundError or PropertyAlreadyExistsOnPageError."""
-        return self._add_page_property(
-            vault_path, database_name, page_id, property_id, name, property_type
-        )
+        try:
+            return self._add_page_property(
+                vault_path, database_name, page_id, property_id, name, property_type
+            )
+        except _AppPageNotFoundError as error:
+            raise PageNotFoundError(str(error)) from error
+        except _AppPropertyAlreadyExistsOnPageError as error:
+            raise PropertyAlreadyExistsOnPageError(str(error)) from error
 
     def remove_property(
         self,
@@ -206,7 +281,10 @@ class AppController:
         property_id: str,
     ) -> None:
         """Remove a property from the schema and from all pages. Raises PropertyNotFoundError if not in schema."""
-        return self._remove_property(vault_path, database_name, property_id)
+        try:
+            return self._remove_property(vault_path, database_name, property_id)
+        except _AppPropertyNotFoundError as error:
+            raise PropertyNotFoundError(str(error)) from error
 
     def update_property(
         self,
@@ -218,18 +296,24 @@ class AppController:
         new_choices: list | None = None,
     ) -> None:
         """Update a property's name and/or type in the schema and on all pages. Raises PropertyNotFoundError if not found."""
-        return self._update_property(
-            vault_path,
-            database_name,
-            property_id,
-            new_name,
-            new_type,
-            new_choices,
-        )
+        try:
+            return self._update_property(
+                vault_path,
+                database_name,
+                property_id,
+                new_name,
+                new_type,
+                new_choices,
+            )
+        except _AppPropertyNotFoundError as error:
+            raise PropertyNotFoundError(str(error)) from error
 
     def open_vault_refresh(self, vault_path: Path) -> OpenVaultUseCase.Output:
         """Re-open the vault and return fresh output (e.g. after schema change)."""
-        return self._open_vault(vault_path)
+        try:
+            return self._open_vault(vault_path)
+        except _AppVaultNotFoundError as error:
+            raise VaultNotFoundError(str(error)) from error
 
     def update_property_order(
         self,
@@ -249,6 +333,11 @@ class AppController:
         value: bool | str,
     ) -> None:
         """Update one property value on a page and persist. Raises PageNotFoundError or PropertyNotFoundOnPageError."""
-        return self._update_page_property(
-            vault_path, database_name, page_id, property_id, value
-        )
+        try:
+            return self._update_page_property(
+                vault_path, database_name, page_id, property_id, value
+            )
+        except _AppPageNotFoundError as error:
+            raise PageNotFoundError(str(error)) from error
+        except _AppPropertyNotFoundOnPageError as error:
+            raise PropertyNotFoundOnPageError(str(error)) from error

@@ -21,27 +21,27 @@ class ChoiceDTO:
 
 
 @dataclass(frozen=True)
-class BooleanPropertyInputDTO:
+class PropertyInputDTO:
+    """Base DTO for adding a property to the schema. All property DTOs share id and name."""
+
+    property_id: str
+    name: str
+
+
+@dataclass(frozen=True)
+class BooleanPropertyInputDTO(PropertyInputDTO):
     """Input DTO for adding a boolean property to the schema."""
 
-    property_id: str
-    name: str
-
 
 @dataclass(frozen=True)
-class StringPropertyInputDTO:
+class StringPropertyInputDTO(PropertyInputDTO):
     """Input DTO for adding a string property to the schema."""
 
-    property_id: str
-    name: str
-
 
 @dataclass(frozen=True)
-class StatusPropertyInputDTO:
+class StatusPropertyInputDTO(PropertyInputDTO):
     """Input DTO for adding a status property to the schema. Includes choices."""
 
-    property_id: str
-    name: str
     choices: tuple[ChoiceDTO, ...]
 
 
@@ -50,7 +50,7 @@ class AddPropertyInputDTO:
     """Input DTO for adding a property to the schema. property is one of the type-specific DTOs."""
 
     database_name: str
-    property: BooleanPropertyInputDTO | StringPropertyInputDTO | StatusPropertyInputDTO
+    property: PropertyInputDTO
 
 
 @dataclass(frozen=True)

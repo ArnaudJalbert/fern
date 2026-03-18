@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from fern.application.dtos import AddPropertyInputDTO, BooleanPropertyInputDTO
 from fern.application.errors import PropertyAlreadyExistsError
 from fern.application.use_cases.add_property import AddPropertyUseCase
-from fern.domain.entities import Property, PropertyType
+from fern.domain.entities import BooleanProperty
 
 
 def test_add_property_success() -> None:
@@ -30,7 +30,7 @@ def test_add_property_success() -> None:
 
 
 def test_add_property_duplicate_id_fails() -> None:
-    existing = Property(id="p1", name="X", type=PropertyType.BOOLEAN)
+    existing = BooleanProperty(id="p1", name="X")
     db_repo = MagicMock()
     db_repo.get_schema.return_value = ([existing], ["p1"])
 

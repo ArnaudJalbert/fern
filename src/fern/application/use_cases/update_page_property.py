@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fern.application.errors import PageNotFoundError, PropertyNotFoundOnPageError
-from fern.domain.entities.properties import Property
+from fern.domain.entities.properties import PropertyType
 from fern.domain.repositories.page_repository import PageRepository
 
 
@@ -33,12 +33,10 @@ class UpdatePagePropertyUseCase:
             PageNotFoundError: If the page is not found.
             PropertyNotFoundOnPageError: If the property is not on the page.
         """
-        # Retrieve the page or raise if not found
         page = self._page_repository.get_by_id(input_data.page_id)
         if page is None:
             raise PageNotFoundError(page_id=input_data.page_id)
 
-        # Locate the property on the page or raise if missing
         page_property = self._find_property_on_page(
             page.properties,
             input_data.property_id,
@@ -49,15 +47,13 @@ class UpdatePagePropertyUseCase:
                 page_id=input_data.page_id,
             )
 
-        # Coerce the input value and build updated properties list
-        value = self._coerce_value(page_property.type, input_data.value)
+        value = page_property.coerce(input_data.value)
         updated_properties = self._properties_with_updated_value(
             page.properties,
             input_data.property_id,
             value,
         )
 
-        # Persist the page
         self._page_repository.update(
             page.id,
             page.title,
@@ -74,27 +70,22 @@ class UpdatePagePropertyUseCase:
         return None
 
     @staticmethod
-    def _coerce_value(property_type, value: bool | str) -> bool | str:
-        """Coerce the value using the property type if it has coerce."""
-        if hasattr(property_type.value, "coerce"):
-            return property_type.value.coerce(value)
-        return value
-
-    @staticmethod
     def _properties_with_updated_value(
         properties: list,
         property_id: str,
         value: bool | str,
     ) -> list:
         """Return a new list of properties with the given property's value set."""
-        return [
-            Property(
-                id=page_property.id,
-                name=page_property.name,
-                type=page_property.type,
-                value=value,
-            )
-            if page_property.id == property_id
-            else page_property
-            for page_property in properties
-        ]
+        result = []
+        for page_property in properties:
+            if page_property.id == property_id:
+                property_type = PropertyType.from_key(page_property.type_key())
+                updated = property_type.create(
+                    id=page_property.id,
+                    name=page_property.name,
+                    value=value,
+                )
+                result.append(updated)
+            else:
+                result.append(page_property)
+        return result
