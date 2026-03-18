@@ -64,7 +64,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Install uv
         run: pip install uv
       - name: Sync dependencies
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Install uv
         run: pip install uv
       - name: Sync dependencies
@@ -99,7 +99,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Install uv
         run: pip install uv
       - name: Sync dependencies (no dev)
@@ -124,11 +124,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Install uv
         run: pip install uv
       - name: Publish to GitHub Packages
         run: |
+          cd dist
           uv publish --no-attestations --publish-url "https://upload.pkg.github.com/${{ github.repository }}" --username "${{ github.repository_owner }}" --password "${{ secrets.GITHUB_TOKEN }}"
 
   publish-pypi:
@@ -143,13 +144,15 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Install uv
         run: pip install uv
       - name: Publish to PyPI
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: uv publish --token "$UV_PUBLISH_TOKEN"
+        run: |
+          cd dist
+          uv publish --token "$UV_PUBLISH_TOKEN"
 
   create-release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -182,7 +185,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Install uv
         run: pip install uv
       - name: Sync dependencies
