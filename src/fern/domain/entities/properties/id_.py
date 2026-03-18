@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+from .property import Property
 
-class IdProperty:
-    """Implements the page id property: integer, read-only."""
 
+@dataclass(kw_only=True)
+class IdProperty(Property):
+    """Page id property: integer, read-only, mandatory."""
+
+    mandatory: bool = True
     TYPE_KEY = "id"
 
-    @classmethod
-    def default_value(cls) -> int:
+    def type_key(self) -> str:
+        return self.TYPE_KEY
+
+    def default_value(self) -> int:
         return 0
 
-    @classmethod
-    def validate(cls, value: Any) -> bool:
+    def validate(self, value: Any) -> bool:
         return isinstance(value, int)
 
-    @classmethod
-    def coerce(cls, value: Any) -> int:
+    def coerce(self, value: Any) -> int:
         if isinstance(value, int):
             return value
         try:

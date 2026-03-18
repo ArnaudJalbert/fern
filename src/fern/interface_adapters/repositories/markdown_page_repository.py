@@ -21,23 +21,22 @@ def _properties_from_raw(raw) -> list[Property]:
                 continue
             pid = str(item["id"])
             name = str(item.get("name", pid))
-            property_type = PropertyType.from_key(str(item.get("type", "boolean")))
+            raw_type = item.get("type")
+            if raw_type is None:
+                raise ValueError(f"Property missing 'type' (id={pid})")
+            property_type = PropertyType.from_key(str(raw_type))
+            new_property = property_type.create(id=pid, name=name)
             raw_value = item.get("value")
-            if raw_value is None and hasattr(property_type.value, "default_value"):
-                raw_value = property_type.value.default_value()
-            value = (
-                property_type.value.coerce(raw_value)
-                if hasattr(property_type.value, "coerce")
-                else raw_value
-            )
-            out.append(Property(id=pid, name=name, type=property_type, value=value))
+            if raw_value is None:
+                raw_value = new_property.default_value()
+            value = new_property.coerce(raw_value)
+            new_property.value = value
+            out.append(new_property)
         return out
     if isinstance(raw, dict):
         return [
-            Property(
-                id=str(k), name=str(k), type=PropertyType.from_key("boolean"), value=v
-            )
-            for k, v in raw.items()
+            PropertyType.BOOLEAN.create(id=str(key), name=str(key), value=value)
+            for key, value in raw.items()
         ]
     return []
 
@@ -48,7 +47,7 @@ def _properties_to_raw(properties: list[Property]) -> list[dict]:
         {
             "id": page_property.id,
             "name": page_property.name,
-            "type": page_property.type.key(),
+            "type": page_property.type_key(),
             "value": page_property.value,
         }
         for page_property in properties

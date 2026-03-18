@@ -12,7 +12,7 @@ from pathlib import Path
 
 import frontmatter
 
-from fern.domain.entities.properties import Property, PropertyType
+from fern.domain.entities.properties import BooleanProperty, StringProperty
 from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
 )
@@ -49,7 +49,7 @@ class _PropertyLike:
 
 def _build_save_page(vault_path: Path):
     """Build the same save_page callable the ControllerFactory creates."""
-    from fern.domain.entities.properties import Property, PropertyType
+    from fern.domain.entities.properties import PropertyType
     from fern.interface_adapters.repositories.markdown_page_repository import (
         MarkdownPageRepository,
     )
@@ -71,14 +71,14 @@ def _build_save_page(vault_path: Path):
                 property_id = getattr(page_property, "id", "")
                 if property_id in ("id", "title"):
                     continue
-                property_type = getattr(page_property, "type", "string")
-                if isinstance(property_type, str):
-                    property_type = PropertyType.from_key(property_type)
+                property_type_key = getattr(page_property, "type", "string")
+                if not isinstance(property_type_key, str):
+                    property_type_key = "string"
+                property_type = PropertyType.from_key(property_type_key)
                 domain_props.append(
-                    Property(
+                    property_type.create(
                         id=property_id,
                         name=getattr(page_property, "name", property_id),
-                        type=property_type,
                         value=getattr(page_property, "value", None),
                     )
                 )
@@ -143,9 +143,7 @@ class TestSavePagePersistsProperties:
             "Page",
             "",
             properties=[
-                Property(
-                    id="status", name="Status", type=PropertyType.STRING, value="draft"
-                ),
+                StringProperty(id="status", name="Status", value="draft"),
             ],
         )
 
@@ -190,7 +188,7 @@ class TestSavePagePersistsProperties:
             "P",
             "",
             properties=[
-                Property(id="x", name="X", type=PropertyType.BOOLEAN, value=True),
+                BooleanProperty(id="x", name="X", value=True),
             ],
         )
         assert len(repo.get_by_id(page.id).properties) == 1
@@ -218,9 +216,9 @@ class TestSavePagePersistsProperties:
         assert reloaded is not None
         by_id = {p.id: p for p in reloaded.properties}
         assert by_id["done"].value is False
-        assert by_id["done"].type == PropertyType.BOOLEAN
+        assert by_id["done"].type_key() == "boolean"
         assert by_id["tag"].value == "urgent"
-        assert by_id["tag"].type == PropertyType.STRING
+        assert by_id["tag"].type_key() == "string"
 
     def test_save_preserves_content_and_title(self, tmp_path: Path) -> None:
         """Properties save must not corrupt title or content."""
@@ -360,9 +358,7 @@ class TestAddPropertyUpdatesFiles:
             page.id,
             "Page",
             "",
-            properties=[
-                Property(id="old", name="Old", type=PropertyType.BOOLEAN, value=True)
-            ],
+            properties=[BooleanProperty(id="old", name="Old", value=True)],
         )
 
         db_repo = VaultDatabaseRepository(vault)

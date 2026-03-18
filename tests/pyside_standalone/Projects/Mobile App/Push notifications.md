@@ -4,7 +4,7 @@ properties:
 - id: status
   name: Status
   type: string
-  value: In Progress
+  value: jlkj
 - id: platform
   name: Platform
   type: string
@@ -12,11 +12,7 @@ properties:
 - id: done
   name: Done
   type: boolean
-  value: false
-- id: fast
-  name: fast
-  type: boolean
-  value: false
+  value: true
 ---
 
 # Push notifications

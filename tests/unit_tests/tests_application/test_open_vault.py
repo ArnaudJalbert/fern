@@ -7,19 +7,19 @@ from fern.application.errors import VaultNotFoundError
 from fern.application.use_cases.open_vault import OpenVaultUseCase
 from fern.domain.entities import (
     Database,
+    IdProperty,
     Page,
-    Property,
-    PropertyType,
+    StatusProperty,
+    StringProperty,
+    TitleProperty,
     Vault,
 )
 
 
 def test_open_vault_success() -> None:
     page = Page(id=1, title="P", content="c", properties=[])
-    prop = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-    title_prop = Property(
-        id="title", name="Title", type=PropertyType.TITLE, mandatory=True
-    )
+    prop = IdProperty(id="id", name="ID")
+    title_prop = TitleProperty(id="title", name="Title")
     db = Database(
         name="Inbox",
         pages=[page],
@@ -51,11 +51,9 @@ def test_open_vault_failure_no_vault() -> None:
 
 
 def test_open_vault_includes_schema_and_property_order() -> None:
-    prop = Property(id="p1", name="Status", type=PropertyType.STRING, value="")
-    id_prop = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-    title_prop = Property(
-        id="title", name="Title", type=PropertyType.TITLE, mandatory=True
-    )
+    prop = StringProperty(id="p1", name="Status", value="")
+    id_prop = IdProperty(id="id", name="ID")
+    title_prop = TitleProperty(id="title", name="Title")
     page = Page(id=1, title="P", content="", properties=[prop])
     db = Database(
         name="D",
@@ -63,7 +61,7 @@ def test_open_vault_includes_schema_and_property_order() -> None:
         properties=[
             id_prop,
             title_prop,
-            Property(id="p1", name="Status", type=PropertyType.STRING),
+            StringProperty(id="p1", name="Status"),
         ],
         property_order=["id", "title", "p1"],
     )
@@ -85,10 +83,8 @@ def test_open_vault_includes_schema_and_property_order() -> None:
 
 
 def test_open_vault_default_order_when_empty() -> None:
-    id_prop = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
-    title_prop = Property(
-        id="title", name="Title", type=PropertyType.TITLE, mandatory=True
-    )
+    id_prop = IdProperty(id="id", name="ID")
+    title_prop = TitleProperty(id="title", name="Title")
     db = Database(
         name="D", pages=[], properties=[id_prop, title_prop], property_order=[]
     )
@@ -104,7 +100,7 @@ def test_open_vault_default_order_when_empty() -> None:
 
 def test_open_vault_page_output_includes_mandatory_props() -> None:
     page = Page(id=5, title="Hello", content="world", properties=[])
-    id_prop = Property(id="id", name="ID", type=PropertyType.ID, mandatory=True)
+    id_prop = IdProperty(id="id", name="ID")
     db = Database(name="D", pages=[page], properties=[id_prop], property_order=["id"])
     vault = Vault(name="V", databases=[db])
     repo = MagicMock()
@@ -118,3 +114,38 @@ def test_open_vault_page_output_includes_mandatory_props() -> None:
     title_page_prop = next(p for p in page_out.properties if p.id == "title")
     assert title_page_prop.value == "Hello"
     assert title_page_prop.mandatory is True
+
+
+def test_open_vault_schema_includes_title_and_status_with_choices_output() -> None:
+    """Schema output includes TitlePropertyOutput and StatusPropertyOutput with choices."""
+    from fern.domain.entities import Choice
+    from fern.domain.entities.properties.choice_category import ChoiceCategory
+
+    choice = Choice(name="Done", category=ChoiceCategory(name="cat1"), color="#0f0")
+    status_prop = StatusProperty(id="status", name="Status", choices=[choice])
+    id_prop = IdProperty(id="id", name="ID")
+    title_prop = TitleProperty(id="title", name="Title")
+    page = Page(id=1, title="P", content="", properties=[])
+    database = Database(
+        name="D",
+        pages=[page],
+        properties=[id_prop, title_prop, status_prop],
+        property_order=["id", "title", "status"],
+    )
+    vault = Vault(name="V", databases=[database])
+    repo = MagicMock()
+    repo.get.return_value = vault
+
+    use_case = OpenVaultUseCase(vault_repository=repo)
+    out = use_case.execute(OpenVaultUseCase.Input())
+
+    schema = out.databases[0].schema
+    assert len(schema) == 3
+    title_schema = next(s for s in schema if s.id == "title")
+    assert title_schema.name == "Title"
+    status_schema = next(s for s in schema if s.id == "status")
+    assert status_schema.name == "Status"
+    assert len(status_schema.choices) == 1
+    assert status_schema.choices[0].name == "Done"
+    assert status_schema.choices[0].category.name == "cat1"
+    assert status_schema.choices[0].color == "#0f0"

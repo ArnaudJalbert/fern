@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+from .property import Property
 
-class StringProperty:
-    """Implements string property: default '', validation and coercion."""
 
+@dataclass(kw_only=True)
+class StringProperty(Property):
+    """String property: default empty string, validation and coercion."""
+
+    value: Any = ""
     TYPE_KEY = "string"
 
-    @classmethod
-    def default_value(cls) -> str:
+    def type_key(self) -> str:
+        return self.TYPE_KEY
+
+    def default_value(self) -> str:
         return ""
 
-    @classmethod
-    def validate(cls, value: Any) -> bool:
+    def validate(self, value: Any) -> bool:
         return isinstance(value, str)
 
-    @classmethod
-    def coerce(cls, value: Any) -> str:
+    def coerce(self, value: Any) -> str:
         if value is None:
             return ""
         return str(value)

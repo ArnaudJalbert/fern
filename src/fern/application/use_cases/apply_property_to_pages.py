@@ -23,10 +23,8 @@ class ApplyPropertyToPagesUseCase:
 
     def execute(self, input_data: ApplyPropertyToPagesInputDTO) -> None:
         """Add the property with default value to every page in the repository."""
-        # Create the default property from input
         default_property = self._create_default_property(input_data)
 
-        # Append the property to every page and persist
         for page in self._page_repository.list_all():
             updated_properties = [*page.properties, default_property]
             self._page_repository.update(
@@ -42,10 +40,9 @@ class ApplyPropertyToPagesUseCase:
     ) -> Property:
         """Build a property with default value from the input DTO."""
         property_type = PropertyType.from_key(input_data.type_key)
-        default_value = property_type.value.default_value()
-        return Property(
+        new_property = property_type.create(
             id=input_data.property_id,
             name=input_data.name,
-            type=property_type,
-            value=default_value,
         )
+        new_property.value = new_property.default_value()
+        return new_property

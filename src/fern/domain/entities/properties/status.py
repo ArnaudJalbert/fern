@@ -2,24 +2,31 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
+from .choice import Choice
+from .property import Property
 
-class StatusProperty:
-    """Implements status property: default '', validation and coercion as string."""
 
+@dataclass(kw_only=True)
+class StatusProperty(Property):
+    """Status property: single choice from a list of choices, default empty string."""
+
+    value: Any = ""
+    choices: list[Choice] = field(default_factory=list)
     TYPE_KEY = "status"
 
-    @classmethod
-    def default_value(cls) -> str:
+    def type_key(self) -> str:
+        return self.TYPE_KEY
+
+    def default_value(self) -> str:
         return ""
 
-    @classmethod
-    def validate(cls, value: Any) -> bool:
+    def validate(self, value: Any) -> bool:
         return isinstance(value, str)
 
-    @classmethod
-    def coerce(cls, value: Any) -> str:
+    def coerce(self, value: Any) -> str:
         if value is None:
             return ""
         return str(value)

@@ -2,13 +2,22 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+from .property import Property
 
-class BooleanProperty:
-    """Implements boolean property: default False, validation and coercion."""
 
+@dataclass(kw_only=True)
+class BooleanProperty(Property):
+    """Boolean property: default False, validation and coercion."""
+
+    value: Any = False
     TYPE_KEY = "boolean"
+
+    @classmethod
+    def type_key(cls) -> str:
+        return cls.TYPE_KEY
 
     @classmethod
     def default_value(cls) -> bool:

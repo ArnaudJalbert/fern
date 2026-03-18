@@ -1,0 +1,196 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  version-and-changelog:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check version and changelog
+        run: |
+          TARGET_REF="origin/${{ github.event.pull_request.base.ref }}"
+          VERSION_FILE="pyproject.toml"
+          CHANGELOG_FILE="CHANGELOG.md"
+
+          VERSION_TARGET=$(git show "$TARGET_REF:$VERSION_FILE" 2>/dev/null | sed -n 's/^version = "\(.*\)"/\1/p' | head -1)
+          VERSION_CURRENT=$(sed -n 's/^version = "\(.*\)"/\1/p' "$VERSION_FILE" | head -1)
+
+          if [ -z "$VERSION_CURRENT" ]; then
+            echo "Could not read version from $VERSION_FILE"
+            exit 1
+          fi
+
+          if [ -z "$VERSION_TARGET" ]; then
+            echo "No version on target branch ($TARGET_REF). Skipping version and changelog check."
+            exit 0
+          fi
+
+          if [ "$VERSION_CURRENT" = "$VERSION_TARGET" ]; then
+            echo "Version must be changed when opening a pull request."
+            echo "  Target branch (${{ github.event.pull_request.base.ref }}) version: $VERSION_TARGET"
+            echo "  Your branch version: $VERSION_CURRENT"
+            echo "Bump the version in pyproject.toml (e.g. 0.1.0 -> 0.1.1 or 0.2.0) and push."
+            exit 1
+          fi
+
+          echo "Version changed: $VERSION_TARGET -> $VERSION_CURRENT ✓"
+
+          if [ ! -f "$CHANGELOG_FILE" ]; then
+            echo "CHANGELOG.md is missing. Add a changelog with a section for version $VERSION_CURRENT (e.g. ## [$VERSION_CURRENT])."
+            exit 1
+          fi
+          if ! grep -qF "## [$VERSION_CURRENT]" "$CHANGELOG_FILE"; then
+            echo "CHANGELOG.md must contain a section for version $VERSION_CURRENT."
+            echo "Add a line: ## [$VERSION_CURRENT] - YYYY-MM-DD"
+            echo "See https://keepachangelog.com/en/1.1.0/"
+            exit 1
+          fi
+          echo "CHANGELOG.md has an entry for $VERSION_CURRENT ✓"
+
+  lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: pip install uv
+      - name: Sync dependencies
+        run: uv sync --all-groups
+      - name: Run ruff check
+        run: uv run ruff check .
+      - name: Run ruff format check
+        run: uv run ruff format --check .
+
+  unit-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: pip install uv
+      - name: Sync dependencies
+        run: uv sync --all-groups
+      - name: Run tests with coverage
+        run: uv run pytest tests/unit_tests/ --cov --cov-report=term-missing
+
+  build-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: pip install uv
+      - name: Sync dependencies (no dev)
+        run: uv sync --no-dev
+      - name: Build package
+        run: uv build
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-github-packages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build-package
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: pip install uv
+      - name: Publish to GitHub Packages
+        run: |
+          uv publish --no-attestations --publish-url "https://upload.pkg.github.com/${{ github.repository }}" --username "${{ github.repository_owner }}" --password "${{ secrets.GITHUB_TOKEN }}"
+
+  publish-pypi:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build-package
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: pip install uv
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish --token "$UV_PUBLISH_TOKEN"
+
+  create-release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build-package
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: v${{ steps.get_version.outputs.version }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: [publish-github-packages, publish-pypi, create-release]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv
+        run: pip install uv
+      - name: Sync dependencies
+        run: uv sync --all-groups
+      - name: Build documentation
+        run: uv run mkdocs build --site-dir public
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
