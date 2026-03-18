@@ -5,6 +5,13 @@ All notable changes to Fern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-03-18
+
+### Fixed
+
+- GitHub Actions workflow: Fix `uv publish` failing with `No files found to publish` by downloading package artifacts into `dist/` and publishing `dist/*`
+- GitHub Actions workflow: List downloaded artifacts before publishing to simplify debugging
+
 ## [0.6.2] - 2026-03-18
 
 ### Fixed

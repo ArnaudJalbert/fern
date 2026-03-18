@@ -125,16 +125,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
-          path: .
+          path: dist/
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - name: Install uv
         run: pip install uv
+      - name: List downloaded package artifacts
+        run: ls -la dist || true
       - name: Publish to GitHub Packages
         run: |
-          uv publish --no-attestations --publish-url "https://upload.pkg.github.com/${{ github.repository }}" --username "${{ github.repository_owner }}" --password "${{ secrets.GITHUB_TOKEN }}"
+          uv publish --no-attestations --publish-url "https://upload.pkg.github.com/${{ github.repository }}" --username "${{ github.repository_owner }}" --password "${{ secrets.GITHUB_TOKEN }}" dist/*
 
   publish-pypi:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -145,18 +147,20 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
-          path: .
+          path: dist/
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - name: Install uv
         run: pip install uv
+      - name: List downloaded package artifacts
+        run: ls -la dist || true
       - name: Publish to PyPI
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          uv publish --token "$UV_PUBLISH_TOKEN"
+          uv publish --token "$UV_PUBLISH_TOKEN" dist/*
 
   create-release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
