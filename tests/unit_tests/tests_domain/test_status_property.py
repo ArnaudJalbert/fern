@@ -1,6 +1,5 @@
 """Unit tests for StatusProperty."""
 
-
 from fern.domain.entities import StatusProperty
 
 

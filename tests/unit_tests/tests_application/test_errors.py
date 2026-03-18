@@ -1,6 +1,5 @@
 """Unit tests for application error classes (constructor branches)."""
 
-
 from fern.application.errors.page_errors import PageNotFoundError
 from fern.application.errors.property_errors import (
     PropertyAlreadyExistsError,
