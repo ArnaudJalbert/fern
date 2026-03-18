@@ -35,10 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PropertyType.from_key**: Now raises clear `ValueError` for missing or unknown type keys instead of silently defaulting to boolean.
 - **Repository deserialization**: Added required `type` field validation; raises `ValueError` if missing from property definition.
 
-## [Unreleased]
-
-- (Nothing yet.)
-
 ## [0.5.0] - 2026-03-14
 
 ### Added
