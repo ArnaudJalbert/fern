@@ -8,14 +8,14 @@ from fern.application.property_factory import (
     build_choices_from_dtos,
     build_property_from_type,
 )
+from fern.application.repositories.database_repository import DatabaseRepository
+from fern.application.repositories.page_repository import PageRepository
 from fern.domain.entities import (
     Choice,
     Property,
     PropertyType,
     StatusProperty,
 )
-from fern.domain.repositories.database_repository import DatabaseRepository
-from fern.domain.repositories.page_repository import PageRepository
 
 
 class UpdatePropertyUseCase:

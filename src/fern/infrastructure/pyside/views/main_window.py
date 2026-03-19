@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Protocol
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QKeyEvent, QKeySequence, QShortcut
@@ -21,7 +22,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import RecentVaultsController, VaultController
+from fern.infrastructure.controller.factories.controller_factory import (
+    ControllerFactory,
+)
 from fern.infrastructure.pyside.actions import (
     get_edit_actions,
     get_edit_actions_for_command_palette,
@@ -39,6 +43,12 @@ from .vault_view import VaultView
 from .welcome_page import WelcomePage
 
 
+class Undoable(Protocol):
+    """Protocol for widgets that support undo operation."""
+
+    def undo(self) -> None: ...
+
+
 class MainWindow(QMainWindow):
     """
     Top-level window for the Fern application.
@@ -48,9 +58,15 @@ class MainWindow(QMainWindow):
     opens them in separate windows.
     """
 
-    def __init__(self, controller: AppController) -> None:
+    def __init__(
+        self,
+        recent_controller: RecentVaultsController,
+        controller_factory: ControllerFactory,
+    ) -> None:
         super().__init__()
-        self._controller = controller
+        self._controller_factory = controller_factory
+        self._recent_controller = recent_controller
+        self._vault_controller: VaultController | None = None
         self._vault_path: Path | None = None
         self._child_windows: list[QMainWindow] = []
         self.setWindowTitle("Fern")
@@ -63,14 +79,14 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
         self._palette_page = self._build_palette_page()
         self._stack.addWidget(self._palette_page)
-        self._welcome = WelcomePage(controller)
+        self._welcome = WelcomePage(recent_controller)
         self._welcome.open_vault_requested.connect(self._on_open_vault_requested)
         self._stack.addWidget(self._welcome)
         self.setCentralWidget(self._stack)
         self._stack.setCurrentWidget(self._welcome)
         self._index_before_palette = 1
 
-        recent = self._controller.get_recent_vaults()
+        recent = self._recent_controller.get_recent_vaults()
         if recent:
             path = recent[0]
             if path.is_dir():
@@ -94,12 +110,8 @@ class MainWindow(QMainWindow):
 
         self._view_menu = menu_bar.addMenu("View")
         cmd_palette_action = self._view_menu.addAction("Command Palette...")
-        mod = (
-            Qt.KeyboardModifier.MetaModifier
-            if sys.platform == "darwin"
-            else Qt.KeyboardModifier.ControlModifier
-        )
-        cmd_palette_action.setShortcut(QKeySequence(mod | Qt.Key.Key_P))
+        shortcut_str = "Meta+P" if sys.platform == "darwin" else "Ctrl+P"
+        cmd_palette_action.setShortcut(QKeySequence(shortcut_str))
         cmd_palette_action.triggered.connect(self._on_command_palette)
 
     def _build_shortcuts(self) -> None:
@@ -108,12 +120,8 @@ class MainWindow(QMainWindow):
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
         undo_shortcut.activated.connect(self._on_undo_shortcut)
         # Cmd+P on macOS, Ctrl+P on Windows/Linux
-        mod = (
-            Qt.KeyboardModifier.MetaModifier
-            if sys.platform == "darwin"
-            else Qt.KeyboardModifier.ControlModifier
-        )
-        palette_shortcut = QShortcut(QKeySequence(mod | Qt.Key.Key_P), self)
+        shortcut_str = "Meta+P" if sys.platform == "darwin" else "Ctrl+P"
+        palette_shortcut = QShortcut(QKeySequence(shortcut_str), self)
         palette_shortcut.activated.connect(self._on_command_palette)
 
     def _build_palette_page(self) -> QWidget:
@@ -134,7 +142,7 @@ class MainWindow(QMainWindow):
         palette = CommandPalette(page)
         palette.closed.connect(self._on_palette_closed)
         layout.addWidget(palette, 0, Qt.AlignmentFlag.AlignCenter)
-        page._palette = palette
+        self._palette = palette
 
         def keyPressEvent(event: QKeyEvent) -> None:
             if event.key() == Qt.Key.Key_Escape:
@@ -156,7 +164,10 @@ class MainWindow(QMainWindow):
     def _on_undo_shortcut(self) -> None:
         w = self.focusWidget()
         if w is not None and hasattr(w, "undo") and callable(getattr(w, "undo")):
-            w.undo()
+            from typing import cast
+
+            undoable = cast(Undoable, w)
+            undoable.undo()
 
     def _on_vault_open(self) -> None:
         """Handle Vault > Open...: show the welcome page."""
@@ -166,7 +177,7 @@ class MainWindow(QMainWindow):
 
     def _on_open_vault_requested(self, vault_path: Path) -> None:
         """Handle open from welcome page: add to recent and show vault view."""
-        self._controller.add_recent_vault(vault_path)
+        self._recent_controller.add_recent_vault(vault_path)
         self._welcome.refresh_recent()
         self._show_vault(vault_path)
 
@@ -174,8 +185,10 @@ class MainWindow(QMainWindow):
         from fern.infrastructure.controller import VaultNotFoundError
         from fern.infrastructure.pyside.components import show_error
 
+        # Create a new vault controller for this vault
+        vault_controller = self._controller_factory.create_vault_controller(vault_path)
         try:
-            output = self._controller.open_vault(vault_path)
+            output = vault_controller.open_vault()
         except VaultNotFoundError as e:
             detail = f"{e.message}\n\nPath: {vault_path}" if vault_path else e.message
             show_error(self, detail, title="Open vault")
@@ -184,9 +197,10 @@ class MainWindow(QMainWindow):
         if isinstance(current, VaultView):
             current.save_pending_state()
             self._stack.removeWidget(current)
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
         self.setWindowTitle(f"Fern — {output.vault_name}")
-        vault_view = VaultView(self._controller, vault_path, output)
+        vault_view = VaultView(vault_controller, vault_path, output)
         self._stack.addWidget(vault_view)
         self._stack.setCurrentWidget(vault_view)
         show_toast(self, "Vault opened")
@@ -232,7 +246,7 @@ class MainWindow(QMainWindow):
     def _on_command_palette(self) -> None:
         """Open the command palette as a centered page in the middle of the window."""
         self._index_before_palette = self._stack.currentIndex()
-        self._palette_page._palette.set_actions(self._build_command_palette_actions())
+        self._palette.set_actions(self._build_command_palette_actions())
         self._stack.setCurrentWidget(self._palette_page)
 
     # ── Databases menu ───────────────────────────────────────────────────────
@@ -249,7 +263,7 @@ class MainWindow(QMainWindow):
 
         see_action.setEnabled(True)
         try:
-            output = self._controller.open_vault_refresh(self._vault_path)
+            output = self._vault_controller.open_vault_refresh()  # type: ignore
         except Exception as e:
             from fern.infrastructure.pyside.components import show_error
 
@@ -269,7 +283,7 @@ class MainWindow(QMainWindow):
         if self._vault_path is None:
             return
         self._cleanup_child_windows()
-        win = DatabasesOverviewWindow(self._controller, self._vault_path)
+        win = DatabasesOverviewWindow(self._vault_controller, self._vault_path)  # type: ignore
         win.show()
         win.raise_()
         win.activateWindow()
@@ -280,7 +294,7 @@ class MainWindow(QMainWindow):
         if self._vault_path is None:
             return
         self._cleanup_child_windows()
-        win = DatabaseWindow(self._controller, self._vault_path, database_name)
+        win = DatabaseWindow(self._vault_controller, self._vault_path, database_name)  # type: ignore
         win.show()
         win.raise_()
         self._child_windows.append(win)
@@ -302,6 +316,6 @@ class MainWindow(QMainWindow):
 
     def open_vault(self, vault_path: Path) -> None:
         """Programmatically open a vault (e.g. for tests)."""
-        self._controller.add_recent_vault(vault_path)
+        self._recent_controller.add_recent_vault(vault_path)
         self._welcome.refresh_recent()
         self._show_vault(vault_path)

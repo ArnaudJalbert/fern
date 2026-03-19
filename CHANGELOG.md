@@ -5,6 +5,32 @@ All notable changes to Fern are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-18
+
+### Added
+
+- **Clean architecture refactoring**: Complete reorganization following clean architecture principles with clear separation between domain, application, infrastructure, and interface adapters layers
+- **Repository layer**: New abstract repository interfaces in `fern.application.repositories` with concrete implementations in `fern.interface_adapters.repositories`
+- **Controller layer**: New controller layer in `fern.infrastructure.controller` with specialized controllers (`VaultController`, `RecentVaultsController`) and factories
+- **Enhanced error handling**: Comprehensive error classes in `fern.infrastructure.controller.errors` with detailed messages for better debugging
+- **Recent vaults management**: New use cases and repository for tracking and managing recently opened vaults
+- **Improved test coverage**: Added extensive unit tests for controllers, factories, and repositories
+
+### Changed
+
+- **Architecture**: Moved from layered architecture to clean/hexagonal architecture with dependency inversion
+- **Repository structure**: Split monolithic repositories into focused interfaces (VaultRepository, DatabaseRepository, PageRepository, RecentVaultsRepository)
+- **Controller organization**: Replaced single controller with specialized controllers and factory pattern for creation
+- **Error handling**: Application errors now include detailed context and are handled consistently through controller layer
+- **Use cases**: All use cases now depend on repository abstractions rather than concrete implementations
+- **PySide views**: Updated to use new controller layer instead of direct repository access
+
+### Fixed
+
+- **Separation of concerns**: Clear boundaries between UI (PySide), application logic (use cases), and data access (repositories)
+- **Testability**: Improved testability through dependency injection and interface-based design
+- **Maintainability**: Reduced coupling and increased cohesion across all layers
+
 ## [0.6.4] - 2026-03-18
 
 ### Fixed
@@ -169,7 +195,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edit/Add property dialog: capture name and type before dialog is destroyed to avoid deleted widget access.
 - Removed invalid `font-family: inherit` in editor QSS to avoid Qt font warning.
 
-[Unreleased]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.6.2...HEAD
+[Unreleased]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.7.0...HEAD
+[0.7.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.6.4...v0.7.0
 [0.6.1]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.6.0...0.6.1
 [0.6.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.5.0...v0.6.0
 [0.5.0]: https://gitlab.com/arnaudjalbert/fern/-/compare/v0.4.0...v0.5.0

@@ -10,9 +10,6 @@ dependencies = [
     "markdown>=3.10",
 ]
 
-[project.optional-dependencies]
-dev = ["pytest>=8.0"]
-
 [dependency-groups]
 dev = [
     "mkdocs>=1.6.1",

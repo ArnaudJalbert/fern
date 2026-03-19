@@ -11,8 +11,8 @@ def main() -> None:
     app = QApplication(sys.argv)
     load_global_stylesheet(app)
     factory = ControllerFactory()
-    controller = factory.get_controller()
-    window = MainWindow(controller)
+    recent_controller = factory.create_recent_vaults_controller()
+    window = MainWindow(recent_controller=recent_controller, controller_factory=factory)
     window.show()
     sys.exit(app.exec())
 

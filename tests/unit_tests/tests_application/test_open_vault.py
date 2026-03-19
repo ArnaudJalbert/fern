@@ -149,3 +149,29 @@ def test_open_vault_schema_includes_title_and_status_with_choices_output() -> No
     assert status_schema.choices[0].name == "Done"
     assert status_schema.choices[0].category.name == "cat1"
     assert status_schema.choices[0].color == "#0f0"
+
+
+def test_open_vault_schema_includes_boolean_output() -> None:
+    """Schema output includes BooleanPropertyOutput for boolean properties."""
+    from fern.domain.entities import BooleanProperty
+
+    boolean_prop = BooleanProperty(id="done", name="Done", value=False)
+    id_prop = IdProperty(id="id", name="ID")
+    title_prop = TitleProperty(id="title", name="Title")
+    db = Database(
+        name="D",
+        pages=[],
+        properties=[id_prop, title_prop, boolean_prop],
+        property_order=["id", "title", "done"],
+    )
+    vault = Vault(name="V", databases=[db])
+
+    repo = MagicMock()
+    repo.get.return_value = vault
+
+    out = OpenVaultUseCase(vault_repository=repo).execute(OpenVaultUseCase.Input())
+    schema = out.databases[0].schema
+
+    boolean_schema = next(s for s in schema if s.id == "done")
+    assert boolean_schema.name == "Done"
+    assert boolean_schema.mandatory is False

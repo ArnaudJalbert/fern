@@ -6,8 +6,8 @@ Used asynchronously after adding a property to the schema.
 from __future__ import annotations
 
 from fern.application.dtos import ApplyPropertyToPagesInputDTO
+from fern.application.repositories.page_repository import PageRepository
 from fern.domain.entities import Property, PropertyType
-from fern.domain.repositories.page_repository import PageRepository
 
 
 class ApplyPropertyToPagesUseCase:

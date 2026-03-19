@@ -7,11 +7,11 @@ from pathlib import Path
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import VaultController
 from fern.infrastructure.pyside.components import show_error
 
-from .database_view import DatabaseView
 from .database_page_manager import DatabasePageManager
+from .database_view import DatabaseView
 from .database_view_coordinator import DatabaseViewCoordinator
 from .editor_view import EditorView
 from .pages_view import PagesView
@@ -23,16 +23,16 @@ class DatabasesOverviewWindow(QMainWindow):
 
     def __init__(
         self,
-        controller: AppController,
+        vault_controller: VaultController,
         vault_path: Path,
         parent=None,
     ) -> None:
         super().__init__(parent)
-        self._controller = controller
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
 
-        self._database_page_manager = DatabasePageManager(controller, vault_path)
-        self._property_manager = PropertyManager(controller, vault_path)
+        self._database_page_manager = DatabasePageManager(vault_controller, vault_path)
+        self._property_manager = PropertyManager(vault_controller, vault_path)
 
         self.setWindowTitle("Fern — Databases")
         self.setMinimumSize(640, 420)
@@ -44,7 +44,7 @@ class DatabasesOverviewWindow(QMainWindow):
         undo_shortcut.activated.connect(self._on_undo_shortcut)
 
         try:
-            output = self._controller.open_vault_refresh(self._vault_path)
+            output = self._vault_controller.open_vault_refresh()
             databases = output.databases
         except Exception as exception:
             show_error(self, str(exception))
@@ -95,7 +95,7 @@ class DatabasesOverviewWindow(QMainWindow):
         self._main_stack.setCurrentWidget(self._database_view)
 
     def _load_database(self, database_name: str) -> None:
-        fresh = self._controller.open_vault_refresh(self._vault_path)
+        fresh = self._vault_controller.open_vault_refresh()
         database = self._database_page_manager.find_database(fresh, database_name)
         if database is None:
             return

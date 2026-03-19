@@ -6,8 +6,8 @@ database.json marker files anywhere in the tree.
 
 from pathlib import Path
 
+from fern.application.repositories.vault_repository import VaultRepository
 from fern.domain.entities import Vault
-from fern.domain.repositories.vault_repository import VaultRepository
 from fern.interface_adapters.repositories.vault_database_repository import (
     VaultDatabaseRepository,
 )

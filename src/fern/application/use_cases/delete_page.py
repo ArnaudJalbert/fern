@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fern.application.errors import PageNotFoundError
-from fern.domain.repositories.page_repository import PageRepository
+from fern.application.repositories.page_repository import PageRepository
 
 
 class DeletePageUseCase:

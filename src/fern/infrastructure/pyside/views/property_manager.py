@@ -11,11 +11,11 @@ from pathlib import Path
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, QWidget
 
 from fern.infrastructure.controller import (
-    AppController,
     PageNotFoundError,
     PropertyAlreadyExistsError,
     PropertyAlreadyExistsOnPageError,
     PropertyNotFoundError,
+    VaultController,
     default_value_for_type,
 )
 from fern.infrastructure.pyside.components import (
@@ -34,8 +34,8 @@ from .page_data import PropertyData
 class PropertyManager:
     """Handles property add / edit / remove / reorder through the controller."""
 
-    def __init__(self, controller: AppController, vault_path: Path) -> None:
-        self._controller = controller
+    def __init__(self, vault_controller: VaultController, vault_path: Path) -> None:
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
 
     # -- dialog ----------------------------------------------------------------
@@ -101,8 +101,7 @@ class PropertyManager:
         if slug in ("id", "title"):
             slug = f"{slug}_prop"
         try:
-            self._controller.add_property(
-                self._vault_path,
+            self._vault_controller.add_property(
                 database_name,
                 slug,
                 name,
@@ -133,8 +132,7 @@ class PropertyManager:
         if slug in ("id", "title"):
             slug = f"{slug}_prop"
         try:
-            self._controller.add_page_property(
-                self._vault_path,
+            self._vault_controller.add_page_property(
                 database_name,
                 page_id,
                 slug,
@@ -166,8 +164,7 @@ class PropertyManager:
                 if result is None:
                     return False
                 choices, name = result
-                self._controller.update_property(
-                    self._vault_path,
+                self._vault_controller.update_property(
                     database_name,
                     property_id,
                     new_name=name,
@@ -182,8 +179,7 @@ class PropertyManager:
                 )
                 if name is None:
                     return False
-                self._controller.update_property(
-                    self._vault_path,
+                self._vault_controller.update_property(
                     database_name,
                     property_id,
                     new_name=name,
@@ -211,9 +207,7 @@ class PropertyManager:
         ):
             return False
         try:
-            self._controller.remove_property(
-                self._vault_path, database_name, property_id
-            )
+            self._vault_controller.remove_property(database_name, property_id)
         except PropertyNotFoundError as e:
             show_error(parent, e.message, title="Remove property")
             return False
@@ -225,9 +219,8 @@ class PropertyManager:
         self, database_name: str, order: tuple[str, ...], parent: QWidget
     ) -> bool:
         """Persist column order. Returns True on success."""
-        vault_path = Path(self._vault_path).resolve()
         try:
-            self._controller.update_property_order(vault_path, database_name, order)
+            self._vault_controller.update_property_order(database_name, order)
         except Exception as e:
             show_error(parent, str(e), title="Save column order")
             return False

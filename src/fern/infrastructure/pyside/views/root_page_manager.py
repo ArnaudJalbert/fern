@@ -12,7 +12,7 @@ from pathlib import Path
 
 import frontmatter
 
-from fern.infrastructure.controller import AppController, default_value_for_type
+from fern.infrastructure.controller import VaultController, default_value_for_type
 
 from .page_data import PageData, PropertyData
 
@@ -82,8 +82,8 @@ def safe_path_from_qt(raw) -> Path | None:
 class RootPageManager:
     """Encapsulates all root-page file operations."""
 
-    def __init__(self, controller: AppController, vault_path: Path) -> None:
-        self._controller = controller
+    def __init__(self, vault_controller: VaultController, vault_path: Path) -> None:
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
 
     def list_root_pages(self) -> list[Path]:
@@ -163,7 +163,7 @@ class RootPageManager:
 
     def create(self, title: str = "Untitled") -> PageData:
         """Create a new root page via the controller use case."""
-        out = self._controller.create_root_page(self._vault_path, title=title)
+        out = self._vault_controller.create_root_page(title=title)
         return PageData(
             id=out.page_id,
             title=out.title,
