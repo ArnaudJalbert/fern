@@ -280,7 +280,6 @@ def test_delete_page_error_translation(vault_controller):
     # Mock the DeletePageUseCase to raise an error
     from fern.application.use_cases.delete_page import DeletePageUseCase
 
-
     def mock_init(self, repo):
         self._page_repository = repo
         self.execute = MagicMock(
