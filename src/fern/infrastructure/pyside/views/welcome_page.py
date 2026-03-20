@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import RecentVaultsController
 from fern.infrastructure.pyside.components import show_error, show_toast
 
 
@@ -49,7 +49,7 @@ class WelcomePage(QWidget):
 
     open_vault_requested = Signal(Path)
 
-    def __init__(self, controller: AppController) -> None:
+    def __init__(self, recent_controller: RecentVaultsController) -> None:
         """
         Build the layout and load the recent vaults list.
 
@@ -57,7 +57,7 @@ class WelcomePage(QWidget):
             controller: Application controller for recent vaults and create_vault.
         """
         super().__init__()
-        self._controller = controller
+        self._recent_controller = recent_controller
         self.setObjectName("welcomePage")
         self._build_ui()
         self.refresh_recent()
@@ -167,7 +167,7 @@ class WelcomePage(QWidget):
     def refresh_recent(self) -> None:
         """Reload the recent vaults list from the controller (storage)."""
         self._recent_list.clear()
-        for path in self._controller.get_recent_vaults():
+        for path in self._recent_controller.get_recent_vaults():
             if path.exists():
                 item = QListWidgetItem(path.name)
                 item.setData(Qt.ItemDataRole.UserRole, str(path))
@@ -191,7 +191,7 @@ class WelcomePage(QWidget):
         if action is open_action:
             self.open_vault_requested.emit(path)
         elif action is remove_action:
-            self._controller.remove_recent_vault(path)
+            self._recent_controller.remove_recent_vault(path)
             show_toast(self, "Removed from list")
             self.refresh_recent()
 
@@ -224,7 +224,7 @@ class WelcomePage(QWidget):
             show_error(self, "Please select a valid folder.", title="Invalid folder")
             return
         vault_name = "New Vault"
-        vault_path = self._controller.create_vault(path, vault_name)
+        vault_path = self._recent_controller.create_vault(path, vault_name)
         if vault_path is None:
             show_error(
                 self,

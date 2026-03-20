@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 
+from fern.application.repositories.database_repository import DatabaseRepository
 from fern.domain.entities import (
     Choice,
     Database,
@@ -18,7 +19,6 @@ from fern.domain.entities import (
     StatusProperty,
     TitleProperty,
 )
-from fern.domain.repositories.database_repository import DatabaseRepository
 from fern.interface_adapters.repositories.markdown_page_repository import (
     MarkdownPageRepository,
 )

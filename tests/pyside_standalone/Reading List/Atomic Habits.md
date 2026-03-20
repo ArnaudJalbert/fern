@@ -8,7 +8,7 @@ properties:
 - id: genre
   name: Genre
   type: string
-  value: Self-improvement
+  value: ''
 - id: read
   name: Read
   type: boolean

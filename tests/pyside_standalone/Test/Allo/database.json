@@ -1,0 +1,14 @@
+{
+  "properties": [
+    {
+      "id": "done",
+      "name": "Done",
+      "type": "boolean"
+    }
+  ],
+  "propertyOrder": [
+    "id",
+    "title",
+    "done"
+  ]
+}

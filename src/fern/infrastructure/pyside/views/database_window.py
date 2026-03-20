@@ -12,7 +12,7 @@ from pathlib import Path
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QMainWindow, QStackedWidget
 
-from fern.infrastructure.controller import AppController
+from fern.infrastructure.controller import VaultController
 
 from .database_page_manager import DatabasePageManager
 from .database_view_coordinator import DatabaseViewCoordinator
@@ -26,17 +26,17 @@ class DatabaseWindow(QMainWindow):
 
     def __init__(
         self,
-        controller: AppController,
+        vault_controller: VaultController,
         vault_path: Path,
         database_name: str,
         parent=None,
     ) -> None:
         super().__init__(parent)
-        self._controller = controller
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
 
-        database_page_manager = DatabasePageManager(controller, vault_path)
-        property_manager = PropertyManager(controller, vault_path)
+        database_page_manager = DatabasePageManager(vault_controller, vault_path)
+        property_manager = PropertyManager(vault_controller, vault_path)
 
         self.setWindowTitle(f"Fern — {database_name}")
         self.setMinimumSize(640, 420)
@@ -74,7 +74,7 @@ class DatabaseWindow(QMainWindow):
         database_name: str,
         database_page_manager: DatabasePageManager,
     ) -> None:
-        fresh = self._controller.open_vault_refresh(self._vault_path)
+        fresh = self._vault_controller.open_vault_refresh()
         database = database_page_manager.find_database(fresh, database_name)
         if database is None:
             return

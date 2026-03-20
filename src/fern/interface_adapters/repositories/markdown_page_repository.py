@@ -2,9 +2,9 @@ from pathlib import Path
 
 import frontmatter
 
+from fern.application.repositories.page_repository import PageRepository
 from fern.domain.entities.page import Page
 from fern.domain.entities.properties import Property, PropertyType
-from fern.domain.repositories.page_repository import PageRepository
 
 
 def _safe_filename(name: str) -> str:
@@ -88,7 +88,9 @@ class MarkdownPageRepository(PageRepository):
     """
 
     def __init__(self, pages_dir: Path | str, *, folder: str = "") -> None:
-        self._pages_dir = Path(pages_dir)
+        # Keep both names for compatibility with older code/tests.
+        self._db_dir = Path(pages_dir)
+        self._pages_dir = self._db_dir
         self._folder = folder
 
     def get_by_id(self, page_id: int) -> Page | None:

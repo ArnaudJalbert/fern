@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from fern.application.dtos import AddPagePropertyInputDTO
 from fern.application.errors import PageNotFoundError, PropertyAlreadyExistsOnPageError
+from fern.application.repositories.page_repository import PageRepository
 from fern.domain.entities import PropertyType
-from fern.domain.repositories.page_repository import PageRepository
 
 
 class AddPagePropertyUseCase:

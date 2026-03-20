@@ -81,3 +81,13 @@ class ApplyPropertyToPagesInputDTO:
     property_id: str
     name: str
     type_key: str
+
+
+@dataclass(frozen=True)
+class PropertyValueDTO:
+    """DTO for a property value (property metadata and its assigned value). Used when returning page property values."""
+
+    property_id: str
+    name: str
+    type_key: str
+    value: object | None = None

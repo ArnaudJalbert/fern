@@ -8,7 +8,7 @@ from __future__ import annotations
 from fern.application.dtos import AddPropertyInputDTO
 from fern.application.errors import PropertyAlreadyExistsError
 from fern.application.property_factory import build_property_from_dto
-from fern.domain.repositories.database_repository import DatabaseRepository
+from fern.application.repositories.database_repository import DatabaseRepository
 
 
 class AddPropertyUseCase:

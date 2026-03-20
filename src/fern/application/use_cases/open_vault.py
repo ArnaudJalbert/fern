@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fern.application.errors import VaultNotFoundError
+from fern.application.repositories.vault_repository import VaultRepository
 from fern.domain.entities import Page, StatusProperty
-from fern.domain.repositories.vault_repository import VaultRepository
 
 
 class OpenVaultUseCase:

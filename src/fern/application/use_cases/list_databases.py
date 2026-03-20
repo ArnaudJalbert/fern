@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fern.domain.repositories.database_repository import DatabaseRepository
+from fern.application.repositories.database_repository import DatabaseRepository
 
 
 class ListDatabasesUseCase:

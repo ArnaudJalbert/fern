@@ -1,6 +1,6 @@
+from fern.application.repositories.page_repository import PageRepository
 from fern.domain.entities.page import Page
 from fern.domain.entities.properties import Property
-from fern.domain.repositories.page_repository import PageRepository
 
 
 class InMemoryPageRepository(PageRepository):

@@ -167,17 +167,12 @@ wheels = [
 
 [[package]]
 name = "fern-app"
-version = "0.6.1"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "markdown" },
     { name = "pyside6" },
     { name = "python-frontmatter" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
 ]
 
 [package.dev-dependencies]
@@ -193,10 +188,8 @@ dev = [
 requires-dist = [
     { name = "markdown", specifier = ">=3.10" },
     { name = "pyside6", specifier = ">=6.6" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "python-frontmatter", specifier = ">=1.1.0" },
 ]
-provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [

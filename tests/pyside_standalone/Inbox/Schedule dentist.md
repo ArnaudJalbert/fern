@@ -12,7 +12,7 @@ properties:
 - id: status
   name: Status
   type: status
-  value: Backlog
+  value: Not Started
 ---
 
 Call Dr. Martin's office to book a cleaning. Last visit was 6 months ago.

@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fern.infrastructure.controller import AppController, VaultOutput
+from fern.infrastructure.controller import VaultController, VaultOutput
 
 from .page_data import PageData, PropertyData
 
@@ -17,10 +17,10 @@ if TYPE_CHECKING:
 
 
 class DatabasePageManager:
-    """Orchestrates database page CRUD through the AppController."""
+    """Orchestrates database page CRUD through the VaultController."""
 
-    def __init__(self, controller: AppController, vault_path: Path) -> None:
-        self._controller = controller
+    def __init__(self, vault_controller: VaultController, vault_path: Path) -> None:
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
         self.current_database_name: str = ""
         self.current_property_order: tuple[str, ...] = ()
@@ -50,7 +50,7 @@ class DatabasePageManager:
         Returns None if the database is not found after refresh.
         """
         name = getattr(database, "name", str(database))
-        fresh = self._controller.open_vault_refresh(self._vault_path)
+        fresh = self._vault_controller.open_vault_refresh()
         db = self.find_database(fresh, name)
         if db is None:
             return None
@@ -68,8 +68,7 @@ class DatabasePageManager:
         """Persist page changes to disk via the controller."""
         if not self.current_database_name:
             return
-        self._controller.save_page(
-            self._vault_path,
+        self._vault_controller.save_page(
             self.current_database_name,
             page_id,
             title,
@@ -90,8 +89,7 @@ class DatabasePageManager:
         If schema is provided, the page's properties will include all schema
         properties (with default values) so the editor shows every field.
         """
-        out = self._controller.create_page(
-            self._vault_path,
+        out = self._vault_controller.create_page(
             self.current_database_name,
             title=title,
             content=content,
@@ -144,8 +142,7 @@ class DatabasePageManager:
         if not self.current_database_name:
             return False
         try:
-            self._controller.delete_page(
-                self._vault_path,
+            self._vault_controller.delete_page(
                 self.current_database_name,
                 page_id,
             )
@@ -167,7 +164,7 @@ class DatabasePageManager:
         if not self.current_database_name:
             return None
         try:
-            fresh = self._controller.open_vault_refresh(self._vault_path)
+            fresh = self._vault_controller.open_vault_refresh()
         except Exception as e:
             if parent is not None:
                 from fern.infrastructure.pyside.components import show_error
@@ -195,8 +192,7 @@ class DatabasePageManager:
         if not self.current_database_name:
             return False
         try:
-            self._controller.update_page_property(
-                self._vault_path,
+            self._vault_controller.update_page_property(
                 self.current_database_name,
                 page_id,
                 property_id,

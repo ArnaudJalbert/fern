@@ -1,4 +1,8 @@
-from fern.infrastructure.controller import AppController, RecentVaultsPort
-from fern.infrastructure.factory import ControllerFactory
+# Import from controller package
+from .controller import ControllerFactory, RecentVaultsController, VaultController
 
-__all__ = ["AppController", "ControllerFactory", "RecentVaultsPort"]
+__all__ = [
+    "VaultController",
+    "RecentVaultsController",
+    "ControllerFactory",
+]

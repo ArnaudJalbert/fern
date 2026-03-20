@@ -1,5 +1,5 @@
 [run]
-source = fern.application,fern.domain,fern.interface_adapters
+source = fern.application,fern.domain,fern.interface_adapters,fern.infrastructure.controller
 
 [report]
 show_missing = True

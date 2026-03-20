@@ -27,7 +27,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from fern.infrastructure.controller import AppController, VaultOutput
+from fern.infrastructure.controller import VaultController, VaultOutput
+from fern.infrastructure.pyside.actions import get_tree_actions
+from fern.infrastructure.pyside.components import confirm, show_error, show_toast
+from fern.infrastructure.pyside.utils import (
+    add_colored_action,
+    load_icon,
+    reveal_in_file_explorer,
+)
 
 from .database_page_manager import DatabasePageManager
 from .database_view_coordinator import DatabaseViewCoordinator
@@ -38,13 +45,6 @@ from .pages_view import PagesView
 from .property_manager import PropertyManager
 from .root_page_manager import RootPageManager
 from .vault_tree_model import FILE_PATH_ROLE, IS_DATABASE_ROLE, VaultTreeModel
-from fern.infrastructure.pyside.actions import get_tree_actions
-from fern.infrastructure.pyside.components import confirm, show_error, show_toast
-from fern.infrastructure.pyside.utils import (
-    add_colored_action,
-    load_icon,
-    reveal_in_file_explorer,
-)
 
 
 @dataclass
@@ -65,19 +65,19 @@ class VaultView(QWidget):
 
     def __init__(
         self,
-        controller: AppController,
+        vault_controller: VaultController,
         vault_path: Path,
         vault_output: VaultOutput,
     ) -> None:
         super().__init__()
         self.setObjectName("vaultView")
-        self._controller = controller
+        self._vault_controller = vault_controller
         self._vault_path = vault_path
         self._vault_output = vault_output
 
-        self._root_mgr = RootPageManager(controller, vault_path)
-        self._db_mgr = DatabasePageManager(controller, vault_path)
-        self._prop_mgr = PropertyManager(controller, vault_path)
+        self._root_mgr = RootPageManager(vault_controller, vault_path)
+        self._db_mgr = DatabasePageManager(vault_controller, vault_path)
+        self._prop_mgr = PropertyManager(vault_controller, vault_path)
 
         self._current_root_page: PageData | None = None
 
@@ -122,8 +122,8 @@ class VaultView(QWidget):
 
         self._tree_model = VaultTreeModel(
             self._vault_path,
-            is_database_folder=self._controller.is_database_folder,
-            database_marker_name=self._controller.database_marker_name,
+            is_database_folder=self._vault_controller.is_database_folder,
+            database_marker_name=self._vault_controller.database_marker_name,
             parent=self,
         )
         root_index = self._tree_model.setRootPath(str(self._vault_path))
@@ -221,6 +221,7 @@ class VaultView(QWidget):
         self._pages_view.property_remove_requested.connect(
             self._coordinator.on_remove_property
         )
+        self._pages_view.property_value_changed.connect(self._on_property_value_changed)
         self._pages_view.save_order_requested.connect(self._coordinator.on_save_order)
         self._editor_view.add_property_requested.connect(
             self._coordinator.on_add_property
@@ -356,7 +357,7 @@ class VaultView(QWidget):
         except ValueError:
             return
 
-        fresh = self._controller.open_vault_refresh(self._vault_path)
+        fresh = self._vault_controller.open_vault_refresh()
         self._vault_output = fresh
 
         db = self._db_mgr.find_database(fresh, rel)
@@ -401,12 +402,12 @@ class VaultView(QWidget):
             return
 
         target_rel = f"{rel}/{name.strip()}" if rel else name.strip()
-        created = self._controller.create_database(self._vault_path, target_rel)
+        created = self._vault_controller.create_database(target_rel)
         if not created:
             show_error(self, "A database already exists there.", title="New database")
             return
         show_toast(self, "Database created")
-        fresh = self._controller.open_vault_refresh(self._vault_path)
+        fresh = self._vault_controller.open_vault_refresh()
         self._vault_output = fresh
 
     def _create_page_in(self, folder: Path) -> None:
@@ -472,7 +473,7 @@ class VaultView(QWidget):
             rel = str(db_path.relative_to(self._vault_path))
         except ValueError:
             return
-        win = DatabaseWindow(self._controller, self._vault_path, rel)
+        win = DatabaseWindow(self._vault_controller, self._vault_path, rel)
         win.show()
         win.raise_()
         if not hasattr(self, "_db_windows"):

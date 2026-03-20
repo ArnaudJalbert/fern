@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fern.application.errors import PageNotFoundError
-from fern.domain.repositories.page_repository import PageRepository
+from fern.application.repositories.page_repository import PageRepository
 
 
 class GetPageByIdUseCase:
@@ -14,12 +14,6 @@ class GetPageByIdUseCase:
     @dataclass(frozen=True)
     class Input:
         page_id: int
-
-    @dataclass(frozen=True)
-    class PageOutput:
-        id: int
-        title: str
-        content: str
 
     @dataclass(frozen=True)
     class Output:
